@@ -527,13 +527,6 @@
                                         h: cell.s.alignment.horizontal || 'left',
                                         v: cell.s.alignment.vertical || 'middle'
                                     };
-                                    
-                                    // For center-across selection in Excel
-                                    if (cell.s.alignment.horizontal === 'center' && 
-                                        cell.s.alignment.vertical === 'center' && 
-                                        cell.s.alignment.textRotation === 0) {
-                                        alignment.h = 'center-across';
-                                    }
                                 }
                             }
                         }
@@ -569,7 +562,7 @@
         function calculateColumnWidths(tableData, fontSize) {
             const numCols = tableData[0].length;
             const colWidths = new Array(numCols).fill(0);
-            const cellPaddingH = fontSize * 0.8;
+            const cellPaddingH = fontSize * 0.5; // Ridotto il padding orizzontale
             
             // Calculate max width for each column
             tableData.forEach((row, rowIndex) => {
@@ -620,10 +613,10 @@
 
         function createSVGTables(tableData, sheetName, fontSize) {
             const maxHeight = 912;
-            const lineHeight = fontSize * 1.4;
+            const lineHeight = fontSize * 1.2; // Ridotta l'interlinea
             const maxLines = 3;
-            const cellPaddingV = fontSize * 0.8;
-            const cellPaddingH = fontSize * 0.8;
+            const cellPaddingV = fontSize * 0.4; // Ridotto il padding verticale
+            const cellPaddingH = fontSize * 0.5; // Ridotto il padding orizzontale
             const rowHeight = (maxLines * lineHeight) + (cellPaddingV * 2);
             const headerRows = 1; // Assuming first row is header
             
@@ -714,10 +707,10 @@
         }
 
         function createSVG(tableData, colWidths, totalWidth, sheetName, pageNum, fontSize) {
-            const lineHeight = fontSize * 1.4;
+            const lineHeight = fontSize * 1.2; // Ridotta l'interlinea
             const maxLines = 3;
-            const cellPaddingV = fontSize * 0.8;
-            const cellPaddingH = fontSize * 0.8;
+            const cellPaddingV = fontSize * 0.4; // Ridotto il padding verticale
+            const cellPaddingH = fontSize * 0.5; // Ridotto il padding orizzontale
             const rowHeight = (maxLines * lineHeight) + (cellPaddingV * 2);
             const totalHeight = tableData.length * rowHeight;
             
@@ -799,15 +792,15 @@
                     }
                     
                     // Calculate text position based on alignment
-                    let textX = currentX + cellPaddingH;
-                    let textAnchor = 'start';
+                    let textX, textAnchor;
                     
-                    if (cell.alignment.h === 'center' || cell.alignment.h === 'center-across') {
-                        textX = currentX + cellWidth / 2;
+                    // Allinea la prima colonna a sinistra e tutte le altre al centro
+                    if (colIndex === 0) {
+                        textX = currentX + cellPaddingH;
+                        textAnchor = 'start';
+                    } else {
+                        textX = currentX + (cellWidth / 2);
                         textAnchor = 'middle';
-                    } else if (cell.alignment.h === 'right') {
-                        textX = currentX + cellWidth - cellPaddingH;
-                        textAnchor = 'end';
                     }
                     
                     // Handle text wrapping with max 3 lines
@@ -848,17 +841,9 @@
                         finalLines[maxLines - 1] = truncatedLine + ellipsis;
                     }
                     
-                    // Calculate vertical position
+                    // Calculate vertical position (centrato verticalmente)
                     const totalTextHeight = finalLines.length * lineHeight;
-                    let startY;
-                    
-                    if (cell.alignment.v === 'top') {
-                        startY = currentY + cellPaddingV + fontSize;
-                    } else if (cell.alignment.v === 'bottom') {
-                        startY = currentY + rowHeight - cellPaddingV - totalTextHeight + fontSize;
-                    } else { // middle or center
-                        startY = currentY + (rowHeight - totalTextHeight) / 2 + fontSize;
-                    }
+                    const startY = currentY + (rowHeight / 2) - (totalTextHeight / 2) + fontSize * 0.8;
                     
                     // Draw text lines
                     finalLines.forEach((line, lineIndex) => {
@@ -870,7 +855,7 @@
                             text-decoration="${textDecoration}"
                             text-transform="${textTransform}"
                             text-anchor="${textAnchor}"
-                            dominant-baseline="baseline">${escapeXml(line)}</text>`;
+                            dominant-baseline="middle">${escapeXml(line)}</text>`;
                     });
                     
                     // Draw borders
