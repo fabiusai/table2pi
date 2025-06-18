@@ -169,6 +169,16 @@
             font-size: 16px;
         }
 
+        .bold-first-col {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .bold-first-col input {
+            margin-right: 10px;
+        }
+
         .btn {
             background-color: #1d48b4;
             color: white;
@@ -345,6 +355,11 @@
                     <label for="fontSize">Dimensione font (px):</label>
                     <input type="number" id="fontSize" value="18" min="8" max="32">
                 </div>
+                
+                <div class="bold-first-col">
+                    <input type="checkbox" id="boldFirstCol" checked>
+                    <label for="boldFirstCol">Prima colonna in grassetto</label>
+                </div>
             </div>
 
             <div class="section" style="display: none;" id="processSection">
@@ -370,6 +385,7 @@
         let workbookData = null;
         let selectedLayout = 'light';
         let generatedSVGs = [];
+        let boldFirstCol = true;
 
         // Upload handling
         const uploadArea = document.getElementById('uploadArea');
@@ -378,6 +394,11 @@
         const processSection = document.getElementById('processSection');
         const previewContainer = document.getElementById('previewContainer');
         const previewGrid = document.getElementById('previewGrid');
+        const boldFirstColCheckbox = document.getElementById('boldFirstCol');
+
+        boldFirstColCheckbox.addEventListener('change', function() {
+            boldFirstCol = this.checked;
+        });
 
         uploadArea.addEventListener('click', () => fileInput.click());
 
@@ -562,13 +583,13 @@
         function calculateColumnWidths(tableData, fontSize) {
             const numCols = tableData[0].length;
             const colWidths = new Array(numCols).fill(0);
-            const cellPaddingH = fontSize * 0.3; // Ridotto ulteriormente il padding orizzontale
+            const cellPaddingH = fontSize * 0.3;
             
             // Calculate max width for each column
             tableData.forEach((row, rowIndex) => {
                 row.forEach((cell, colIndex) => {
                     const text = String(cell.value);
-                    const isBold = rowIndex === 0 || cell.style.bold;
+                    const isBold = (rowIndex === 0) || (boldFirstCol && colIndex === 0) || cell.style.bold;
                     const isItalic = cell.style.italic;
                     
                     const width = measureText(text, fontSize, isBold, isItalic) + (cellPaddingH * 2);
@@ -613,10 +634,10 @@
 
         function createSVGTables(tableData, sheetName, fontSize) {
             const maxHeight = 912;
-            const lineHeight = fontSize * 1.1; // Ridotta ulteriormente l'interlinea
+            const lineHeight = fontSize * 1.1;
             const maxLines = 3;
-            const cellPaddingV = fontSize * 0.3; // Ridotto ulteriormente il padding verticale (circa metà del font size)
-            const cellPaddingH = fontSize * 0.3; // Ridotto ulteriormente il padding orizzontale
+            const cellPaddingV = fontSize * 0.3;
+            const cellPaddingH = fontSize * 0.3;
             const rowHeight = (maxLines * lineHeight) + (cellPaddingV * 2);
             const headerRows = 1;
             
@@ -707,10 +728,10 @@
         }
 
         function createSVG(tableData, colWidths, totalWidth, sheetName, pageNum, fontSize) {
-            const lineHeight = fontSize * 1.1; // Ridotta ulteriormente l'interlinea
+            const lineHeight = fontSize * 1.1;
             const maxLines = 3;
-            const cellPaddingV = fontSize * 0.3; // Ridotto ulteriormente il padding verticale (circa metà del font size)
-            const cellPaddingH = fontSize * 0.3; // Ridotto ulteriormente il padding orizzontale
+            const cellPaddingV = fontSize * 0.3;
+            const cellPaddingH = fontSize * 0.3;
             const rowHeight = (maxLines * lineHeight) + (cellPaddingV * 2);
             const totalHeight = tableData.length * rowHeight;
             
@@ -756,6 +777,13 @@
                         svg += `<rect x="0" y="${rowIndex * rowHeight}" width="${totalWidth}" height="${rowHeight}" fill="#f0f0f0"/>`;
                     }
                 });
+            } else if (selectedLayout === 'light') {
+                // Draw light gray borders for all rows in light theme
+                tableData.forEach((row, rowIndex) => {
+                    svg += `<line x1="0" y1="${rowIndex * rowHeight}" x2="${totalWidth}" y2="${rowIndex * rowHeight}" stroke="#c9cbd1" stroke-width="1"/>`;
+                });
+                // Draw bottom border for last row
+                svg += `<line x1="0" y1="${totalHeight}" x2="${totalWidth}" y2="${totalHeight}" stroke="#c9cbd1" stroke-width="1"/>`;
             }
             
             let currentY = 0;
@@ -786,7 +814,7 @@
                         textTransform = 'uppercase';
                         text = text.toUpperCase();
                     } else {
-                        if (cell.style.bold) fontWeight = 'bold';
+                        if ((boldFirstCol && colIndex === 0) || cell.style.bold) fontWeight = 'bold';
                         if (cell.style.italic) fontStyle = 'italic';
                         if (cell.style.underline) textDecoration = 'underline';
                     }
@@ -858,15 +886,8 @@
                             dominant-baseline="middle">${escapeXml(line)}</text>`;
                     });
                     
-                    // Draw borders
-                    if (selectedLayout === 'light') {
-                        // Only bottom border
-                        const borderColor = isHeader ? '#1d48b4' : '#4d4c4c';
-                        svg += `<line x1="${currentX}" y1="${currentY + rowHeight}" 
-                                x2="${currentX + cellWidth}" y2="${currentY + rowHeight}" 
-                                stroke="${borderColor}" stroke-width="1"/>`;
-                    } else if (selectedLayout === 'strong') {
-                        // All borders
+                    // Draw borders for strong layout
+                    if (selectedLayout === 'strong') {
                         svg += `<rect x="${currentX}" y="${currentY}" 
                                 width="${cellWidth}" height="${rowHeight}" 
                                 fill="none" stroke="#1d48b4" stroke-width="1"/>`;
