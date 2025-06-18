@@ -2,6 +2,10 @@
   "name": "excel-svg",
   "version": "1.0.0",
   "private": true,
+
+// ⬇️  URL completo del sito GitHub Pages
+  "homepage": "https://fabiusai.github.io/table2pi",
+
   "scripts": {
     "dev": "vite",
     "build": "vite build",
