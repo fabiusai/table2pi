@@ -562,7 +562,7 @@
         function calculateColumnWidths(tableData, fontSize) {
             const numCols = tableData[0].length;
             const colWidths = new Array(numCols).fill(0);
-            const cellPaddingH = fontSize * 0.5; // Ridotto il padding orizzontale
+            const cellPaddingH = fontSize * 0.3; // Ridotto ulteriormente il padding orizzontale
             
             // Calculate max width for each column
             tableData.forEach((row, rowIndex) => {
@@ -613,12 +613,12 @@
 
         function createSVGTables(tableData, sheetName, fontSize) {
             const maxHeight = 912;
-            const lineHeight = fontSize * 1.2; // Ridotta l'interlinea
+            const lineHeight = fontSize * 1.1; // Ridotta ulteriormente l'interlinea
             const maxLines = 3;
-            const cellPaddingV = fontSize * 0.4; // Ridotto il padding verticale
-            const cellPaddingH = fontSize * 0.5; // Ridotto il padding orizzontale
+            const cellPaddingV = fontSize * 0.3; // Ridotto ulteriormente il padding verticale (circa metà del font size)
+            const cellPaddingH = fontSize * 0.3; // Ridotto ulteriormente il padding orizzontale
             const rowHeight = (maxLines * lineHeight) + (cellPaddingV * 2);
-            const headerRows = 1; // Assuming first row is header
+            const headerRows = 1;
             
             const colWidths = calculateColumnWidths(tableData, fontSize);
             let totalWidth = colWidths.reduce((sum, width) => sum + width, 0);
@@ -707,10 +707,10 @@
         }
 
         function createSVG(tableData, colWidths, totalWidth, sheetName, pageNum, fontSize) {
-            const lineHeight = fontSize * 1.2; // Ridotta l'interlinea
+            const lineHeight = fontSize * 1.1; // Ridotta ulteriormente l'interlinea
             const maxLines = 3;
-            const cellPaddingV = fontSize * 0.4; // Ridotto il padding verticale
-            const cellPaddingH = fontSize * 0.5; // Ridotto il padding orizzontale
+            const cellPaddingV = fontSize * 0.3; // Ridotto ulteriormente il padding verticale (circa metà del font size)
+            const cellPaddingH = fontSize * 0.3; // Ridotto ulteriormente il padding orizzontale
             const rowHeight = (maxLines * lineHeight) + (cellPaddingV * 2);
             const totalHeight = tableData.length * rowHeight;
             
@@ -841,9 +841,9 @@
                         finalLines[maxLines - 1] = truncatedLine + ellipsis;
                     }
                     
-                    // Calculate vertical position (centrato verticalmente)
+                    // Calculate vertical position (centrato verticalmente con spazi ridotti)
                     const totalTextHeight = finalLines.length * lineHeight;
-                    const startY = currentY + (rowHeight / 2) - (totalTextHeight / 2) + fontSize * 0.8;
+                    const startY = currentY + (rowHeight / 2) - (totalTextHeight / 2) + fontSize * 0.5;
                     
                     // Draw text lines
                     finalLines.forEach((line, lineIndex) => {
