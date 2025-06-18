@@ -1,1 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* Caricamento dei pesi principali di Avenir Next LT Pro  */
+@font-face {
+  font-family: "Avenir Next LT Pro";
+  src: url("/fonts/AvenirNextLTPro-Regular.woff2") format("woff2");
+  font-weight: normal;
+}
+@font-face {
+  font-family: "Avenir Next LT Pro";
+  src: url("/fonts/AvenirNextLTPro-Bold.woff2") format("woff2");
+  font-weight: bold;
+}
