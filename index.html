@@ -481,7 +481,7 @@ function createSVG(data,colW,totalW,fontSize,cellPadV){
     svg+='</svg>'; return svg;
 }
 
-function escapeXml(str){ return str.replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'''); }
+function escapeXml(str){ return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;'); }
 
 function downloadSVG(name){ const svgData=generatedSVGs.find(s=>s.name===name); if(!svgData) return; const blob=new Blob([svgData.svg],{type:'image/svg+xml'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${name}.svg`; a.click(); URL.revokeObjectURL(url); }
 window.downloadSVG=downloadSVG;
