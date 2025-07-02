@@ -85,6 +85,7 @@
         }
     </style>
 
+    <!-- ASSICURATI CHE QUESTO LINK USI HTTPS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -497,8 +498,6 @@ function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) {
             const firstColPadH = fontSize * 0.8;
             const currentPadH = (ci === 0) ? firstColPadH : defaultPadH;
             
-            // ====== MODIFICA CHIAVE: Applicazione del Margine di Sicurezza ======
-            // Usiamo il 98% della larghezza disponibile per il calcolo del testo a capo.
             const avail = (cW - (currentPadH * 2)) * 0.98;
 
             const clipId = `clip-${ri}-${ci}`;
