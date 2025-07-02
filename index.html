@@ -164,7 +164,6 @@
             </div>
         </div>
 
-        <!-- ====== NUOVA SEZIONE PER L'ORDINAMENTO ====== -->
         <div class="section" id="sortSection" style="display:none;">
             <h2 class="section-title">3. Ordina i dati (Opzionale)</h2>
             <div class="control-block">
@@ -200,7 +199,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    
+    console.log("DOM loaded. Initializing application...");
+
+    // Variabili di stato dell'applicazione
     let workbookData = null;
     let selectedLayout = 'light';
     let generatedSVGs = [];
@@ -212,7 +213,22 @@ document.addEventListener('DOMContentLoaded', function() {
     let maxRowsPerPage = 25;
     let textHandlingMode = 'wrap';
     let maxLinesPerCell = 3; 
+    
+    // Funzione di utilità per aggiungere listener in modo sicuro
+    function safeAddEventListener(selector, event, handler, isQuerySelectorAll = false) {
+        const element = isQuerySelectorAll ? document.querySelectorAll(selector) : document.getElementById(selector);
+        if (element && element.length !== 0) {
+            if (isQuerySelectorAll) {
+                element.forEach(el => el.addEventListener(event, handler));
+            } else {
+                element.addEventListener(event, handler);
+            }
+        } else {
+            console.error(`Initialization Error: Element with selector "${selector}" not found.`);
+        }
+    }
 
+    // Acquisizione elementi DOM
     const uploadArea       = document.getElementById('uploadArea');
     const fileInput        = document.getElementById('fileInput');
     const statusMessage    = document.getElementById('statusMessage');
@@ -230,70 +246,109 @@ document.addEventListener('DOMContentLoaded', function() {
     const maxLinesControlGroup = document.getElementById('maxLinesControlGroup');
     const maxLinesInput = document.getElementById('maxLinesInput');
     const generateBtn = document.getElementById('generateBtn');
-
-    // ====== NUOVI ELEMENTI DOM PER L'ORDINAMENTO ======
     const sortSection = document.getElementById('sortSection');
     const sortColumnSelect = document.getElementById('sortColumnSelect');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
 
-    maxLinesInput.addEventListener('input', (e) => {
-        maxLinesPerCell = parseInt(e.target.value) || 3;
-    });
-    textHandlingSelect.addEventListener('change', (e) => {
+    // Aggiunta Event Listeners in modo sicuro
+    safeAddEventListener('maxLinesInput', 'input', e => maxLinesPerCell = parseInt(e.target.value) || 3);
+    
+    safeAddEventListener('textHandlingSelect', 'change', e => {
         textHandlingMode = e.target.value;
-        const isWrapMode = textHandlingMode === 'wrap';
-        maxLinesControlGroup.style.display = isWrapMode ? 'flex' : 'none';
+        if (maxLinesControlGroup) {
+            maxLinesControlGroup.style.display = textHandlingMode === 'wrap' ? 'flex' : 'none';
+        }
     });
-    boldFirstColChk.addEventListener('change', () => boldFirstCol = boldFirstColChk.checked);
-    cellSpacingInput.addEventListener('change', () => {
+
+    safeAddEventListener('boldFirstCol', 'change', () => boldFirstCol = boldFirstColChk.checked);
+    
+    safeAddEventListener('cellSpacing', 'change', () => {
         const v = parseFloat(cellSpacingInput.value);
         cellSpacingPt = isNaN(v) ? 4 : v;
     });
-    widthModeRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            widthMode = e.target.value;
-            const isAdjustable = (widthMode === 'adjustable');
-            widthPercentageSlider.disabled = !isAdjustable;
-            maxRowsInput.disabled = !isAdjustable;
-            maxRowsControl.style.display = isAdjustable ? 'flex' : 'none';
-            isMaxRowsEnabled = isAdjustable;
-        });
-    });
-    widthPercentageSlider.addEventListener('input', (e) => {
-        widthPercentage = parseInt(e.target.value);
-        widthPercentageValue.textContent = `${widthPercentage}%`;
-    });
-    maxRowsInput.addEventListener('input', (e) => {
-        maxRowsPerPage = parseInt(e.target.value) || 25;
-    });
-    uploadArea.addEventListener('click', () => fileInput.click());
-    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
-    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-    uploadArea.addEventListener('drop', e => {
-        e.preventDefault(); uploadArea.classList.remove('dragover');
-        if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
-    fileInput.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
 
-    // ====== MODIFICA ALLA GESTIONE DEL FILE CARICATO ======
+    if (widthModeRadios) {
+        widthModeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                widthMode = e.target.value;
+                const isAdjustable = (widthMode === 'adjustable');
+                if (widthPercentageSlider) widthPercentageSlider.disabled = !isAdjustable;
+                if (maxRowsInput) maxRowsInput.disabled = !isAdjustable;
+                if (maxRowsControl) maxRowsControl.style.display = isAdjustable ? 'flex' : 'none';
+                isMaxRowsEnabled = isAdjustable;
+            });
+        });
+    }
+
+    safeAddEventListener('widthPercentageSlider', 'input', e => {
+        widthPercentage = parseInt(e.target.value);
+        if (widthPercentageValue) widthPercentageValue.textContent = `${widthPercentage}%`;
+    });
+
+    safeAddEventListener('maxRowsInput', 'input', e => maxRowsPerPage = parseInt(e.target.value) || 25);
+    
+    if (uploadArea) {
+        uploadArea.addEventListener('click', () => fileInput && fileInput.click());
+        uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        console.log("Upload area listeners attached successfully.");
+    } else {
+        console.error("FATAL: Upload area not found. File uploads will not work.");
+    }
+
+    safeAddEventListener('fileInput', 'change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
+
+    safeAddEventListener('.layout-option', 'click', function() {
+        document.querySelectorAll('.layout-option').forEach(o => o.classList.remove('selected'));
+        this.classList.add('selected');
+        selectedLayout = this.dataset.layout;
+    }, true);
+    
+    safeAddEventListener('generateBtn', 'click', function(){
+        this.disabled=true; this.innerHTML='<span>Elaborazione in corso...</span>';
+        setTimeout(()=>{ processWorkbook(); this.disabled=false; this.innerHTML='<span>Elabora tabelle</span>'; },100);
+    });
+
+    safeAddEventListener('downloadAllBtn', 'click', function(){
+        this.innerHTML='<span>Download in corso...</span>'; 
+        generatedSVGs.forEach((s,i)=>setTimeout(()=>downloadSVG(s.name),i*200)); 
+        setTimeout(()=>{ 
+            this.innerHTML='<span>Scarica tutte le immagini</span>'; 
+            showStatus('Download completato!','success'); 
+        }, generatedSVGs.length * 200 + 500);
+    });
+
     function handleFile(file){
         const reader = new FileReader();
         reader.onload = e => {
-            try{
+            try {
+                if(typeof XLSX === 'undefined') {
+                    showStatus('Libreria di lettura file non caricata.', 'error');
+                    console.error("XLSX library is not defined. Check the script tag.");
+                    return;
+                }
                 const data = new Uint8Array(e.target.result);
                 workbookData = XLSX.read(data,{type:'array', cellStyles:true, cellFormula:true, cellDates:true});
                 showStatus('File caricato con successo!','success');
-                
-                // Popola le opzioni di ordinamento
                 populateSortOptions();
-                sortSection.style.display = 'block';
-                processSection.style.display='block';
-
-            }catch(err){ showStatus('Errore nel caricamento del file','error'); console.error(err);} };
+                if (sortSection) sortSection.style.display = 'block';
+                if (processSection) processSection.style.display='block';
+            } catch(err) { 
+                showStatus('Errore nel caricamento del file','error'); 
+                console.error(err);
+            } 
+        };
         reader.readAsArrayBuffer(file);
     }
 
+    // --- Il resto delle funzioni (invariato) ---
     function populateSortOptions() {
-        if (!workbookData) return;
+        if (!workbookData || !sortColumnSelect) return;
         const firstSheetName = workbookData.SheetNames[0];
         const ws = workbookData.Sheets[firstSheetName];
         const range = XLSX.utils.decode_range(ws['!ref']);
@@ -302,7 +357,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const cell = ws[XLSX.utils.encode_cell({ r: range.s.r, c: c })];
             headers.push(cell ? XLSX.utils.format_cell(cell) : `Colonna ${c + 1}`);
         }
-
         sortColumnSelect.innerHTML = '<option value="-1">Nessun ordinamento</option>';
         headers.forEach((header, index) => {
             const option = document.createElement('option');
@@ -313,82 +367,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function showStatus(msg,type){
+        if (!statusMessage) return;
         statusMessage.textContent=msg;
         statusMessage.className=`status-message ${type}`;
         statusMessage.style.display='block';
         setTimeout(()=>statusMessage.style.display='none',3000);
     }
-    document.querySelectorAll('.layout-option').forEach(opt=>{
-        opt.addEventListener('click',()=>{
-            document.querySelectorAll('.layout-option').forEach(o=>o.classList.remove('selected'));
-            opt.classList.add('selected');
-            selectedLayout = opt.dataset.layout;
-        });
-    });
-    generateBtn.addEventListener('click',function(){
-        this.disabled=true; this.innerHTML='<span>Elaborazione in corso...</span>';
-        setTimeout(()=>{ processWorkbook(); this.disabled=false; this.innerHTML='<span>Elabora tabelle</span>'; },100);
-    });
-
-    function ptToPx(pt){ return pt*1.333; }
-    function formatNumber(val){ if(typeof val!=='number') return val; const abs=Math.abs(val); let f; if(abs>=1e6) f=(val/1e6).toFixed(2).replace('.',',')+'M'; else if(abs>=1e3) f=(val/1e3).toFixed(2).replace('.',',')+'K'; else f=val.toString(); f=f.replace(/,00([MK])/,'$1').replace(/,0([MK])/,'$1'); return f; }
-    const FONT_FAMILY = "'Avenir Next LT Pro', sans-serif";
-    function measureText(text,fontSize,bold=false,italic=false){ const c=document.createElement('canvas').getContext('2d'); c.font=`${italic?'italic ':''}${bold?'bold ':''}${fontSize}px ${FONT_FAMILY}`; return c.measureText(text).width; }
-    function formatDate(date) {
-        if (!(date instanceof Date) || isNaN(date)) return date;
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-    }
-
-    // ====== NUOVA FUNZIONE PER PARSARE LE DATE GG/MM/AAAA ======
-    function parseDate(dateStr) {
-        if (typeof dateStr !== 'string') return null;
-        const parts = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-        if (!parts) return null;
-        // Mese è 0-indicizzato in JS Date, quindi -1
-        const dt = new Date(parts[3], parts[2] - 1, parts[1]);
-        return isNaN(dt.getTime()) ? null : dt;
-    }
-
-    // ====== NUOVA FUNZIONE DI COMPARAZIONE INTELLIGENTE ======
-    function compareRows(rowA, rowB, columnIndex, direction) {
-        const valA = rowA[columnIndex]?.value;
-        const valB = rowB[columnIndex]?.value;
-
-        let result = 0;
-
-        // 1. Tenta di comparare come date
-        const dateA = parseDate(valA);
-        const dateB = parseDate(valB);
-        if (dateA && dateB) {
-            result = dateA.getTime() - dateB.getTime();
-        } else {
-            // 2. Tenta di comparare come numeri
-            const numA = parseFloat(String(valA).replace(',', '.'));
-            const numB = parseFloat(String(valB).replace(',', '.'));
-            if (!isNaN(numA) && !isNaN(numB)) {
-                result = numA - numB;
-            } else {
-                // 3. Fallback a comparazione stringa
-                result = String(valA).localeCompare(String(valB), 'it', { numeric: true });
-            }
-        }
-        
-        return direction === 'asc' ? result : -result;
-    }
-
+    
     function processWorkbook(){
         if(!workbookData) return;
-        generatedSVGs=[]; previewGrid.innerHTML='';
+        generatedSVGs=[]; 
+        if(previewGrid) previewGrid.innerHTML='';
         const fontSize = parseInt(document.getElementById('fontSize').value);
         const cellPaddingV = ptToPx(cellSpacingPt);
-        
-        // ====== LOGICA DI ORDINAMENTO PRIMA DELL'ELABORAZIONE ======
         const sortColumnIndex = parseInt(sortColumnSelect.value);
         const sortDirection = document.querySelector('input[name="sortDirection"]:checked').value;
-
         workbookData.SheetNames.forEach(sheetName=>{
             const ws = workbookData.Sheets[sheetName];
             const range = XLSX.utils.decode_range(ws['!ref']);
@@ -399,12 +392,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     const addr = XLSX.utils.encode_cell({r, c});
                     const cell = ws[addr] || {};
                     let v = cell.v !== undefined ? cell.v : '';
-
-                    // Importante: non formattare qui, ma usare il valore grezzo per l'ordinamento
                     const rawValue = v;
                     if (v instanceof Date) { v = formatDate(v); } 
                     else if (typeof v === 'number' && !XLSX.SSF.is_date(cell.z)) { v = formatNumber(v); }
-
                     const st = cell.s||{};
                     const style={ bold:st.font?.bold, italic:st.font?.italic, underline:st.font?.underline };
                     const align={ h:st.alignment?.horizontal||'left', v:st.alignment?.vertical||'middle' };
@@ -412,76 +402,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 tableData.push(row);
             }
-            
-            // Applica l'ordinamento se selezionato
             if (sortColumnIndex > -1 && tableData.length > 1) {
-                const header = tableData.shift(); // Rimuovi l'header
+                const header = tableData.shift();
                 tableData.sort((a, b) => compareRows(a, b, sortColumnIndex, sortDirection));
-                tableData.unshift(header); // Aggiungi di nuovo l'header
+                tableData.unshift(header);
             }
-            
             if(tableData.length) createSVGTables(tableData,sheetName,fontSize,cellPaddingV);
         });
-        if(generatedSVGs.length){ previewContainer.style.display='block'; showStatus(`Generate ${generatedSVGs.length} immagini SVG`,'success'); }
+        if(generatedSVGs.length && previewContainer){ 
+            previewContainer.style.display='block'; 
+            showStatus(`Generate ${generatedSVGs.length} immagini SVG`,'success'); 
+        }
     }
-
-    function calculateColumnWidths(data, fontSize) {
-        const cols = data[0].length;
-        const widths = new Array(cols).fill(0);
-        const defaultPadH = fontSize * 0.3;
-        const firstColPadH = fontSize * 0.8;
-
-        data.forEach((row, rIdx) => {
-            row.forEach((cell, cIdx) => {
-                const isBold = (rIdx === 0) || (boldFirstCol && cIdx === 0) || cell.style.bold;
-                const isItalic = cell.style.italic;
-                const currentPadH = (cIdx === 0) ? firstColPadH : defaultPadH;
-                const text = String(cell.value);
-
-                const words = text.split(/\s+/);
-                let maxWordWidth = 0;
-                if (words.length > 0) {
-                    words.forEach(word => {
-                        const wordWidth = measureText(word, fontSize, isBold, isItalic);
-                        if (wordWidth > maxWordWidth) {
-                            maxWordWidth = wordWidth;
-                        }
-                    });
-                } else {
-                    maxWordWidth = measureText(text, fontSize, isBold, isItalic);
-                }
-            
-                const requiredWidth = maxWordWidth + (currentPadH * 2);
-                
-                if (requiredWidth > widths[cIdx]) {
-                    widths[cIdx] = requiredWidth;
-                }
-            });
-        });
-
-        const minWidth = 80;
-        widths.forEach((w, i) => {
-            widths[i] = Math.max(w, minWidth);
-        });
-
-        return widths;
-    }
-
+    
     function createSVGTables(data,sheetName,fontSize,cellPadV){
         const currentMaxLines = textHandlingMode === 'wrap' ? maxLinesPerCell : 1;
         const lineHeight = fontSize * 1.1;
         const rowHeight = (currentMaxLines * lineHeight) + (cellPadV * 2);
-        
         const maxHeight = 912;
         const headerRows = 1;
         const maxSVGWidth = 2048;
-        
         const initialColW = calculateColumnWidths(data, fontSize);
         const initialTotalW = initialColW.reduce((s, w) => s + w, 0);
-
-        let finalColW;
-        let finalTotalW;
-
+        let finalColW, finalTotalW;
         if (widthMode === 'adjustable') {
             const targetWidth = maxSVGWidth * (widthPercentage / 100);
             const scale = targetWidth / initialTotalW;
@@ -497,64 +440,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             finalTotalW = maxSVGWidth;
         }
-
         finalTotalW = Math.floor(finalColW.reduce((s, w) => s + w, 0));
         finalColW = finalColW.map(w => Math.floor(w));
-
         const header = data.slice(0, headerRows);
-        let current = [];
-        let curH = 0;
-        let page = 1;
-
+        let current = [], curH = 0, page = 1;
         for(let i = 0; i < data.length; i++){
             const isHeader = i < headerRows;
-            
             let shouldPaginate = false;
             if (isMaxRowsEnabled) {
                 const contentRows = current.length - headerRows;
-                if (contentRows >= maxRowsPerPage && current.length > headerRows) {
-                    shouldPaginate = true;
-                }
+                if (contentRows >= maxRowsPerPage && current.length > headerRows) shouldPaginate = true;
             } else {
                 const addH = isHeader && current.length ? 0 : rowHeight;
-                if (curH + addH > maxHeight && current.length > headerRows) {
-                    shouldPaginate = true;
-                }
+                if (curH + addH > maxHeight && current.length > headerRows) shouldPaginate = true;
             }
-            
             if (shouldPaginate) {
-                generatedSVGs.push({ 
-                    name: `${sheetName}_${page}`, 
-                    svg: createSVG(current, finalColW, finalTotalW, fontSize, cellPadV, rowHeight, currentMaxLines),
-                    width: finalTotalW 
-                });
-                current = [...header]; 
-                curH = rowHeight * headerRows; 
-                page++;
+                generatedSVGs.push({ name: `${sheetName}_${page}`, svg: createSVG(current, finalColW, finalTotalW, fontSize, cellPadV, rowHeight, currentMaxLines), width: finalTotalW });
+                current = [...header]; curH = rowHeight * headerRows; page++;
             }
-
-            if(!isHeader || !current.length){ 
-                current.push(data[i]); 
-                curH += rowHeight; 
-            }
+            if(!isHeader || !current.length){ current.push(data[i]); curH += rowHeight; }
         }
         if(current.length > headerRows) {
-            generatedSVGs.push({ 
-                name: `${sheetName}_${page}`, 
-                svg: createSVG(current, finalColW, finalTotalW, fontSize, cellPadV, rowHeight, currentMaxLines),
-                width: finalTotalW
-            });
+            generatedSVGs.push({ name: `${sheetName}_${page}`, svg: createSVG(current, finalColW, finalTotalW, fontSize, cellPadV, rowHeight, currentMaxLines), width: finalTotalW });
         }
-
         generatedSVGs.slice(-page + 1).forEach(svgData => {
             const item = document.createElement('div');
             item.className = 'preview-item';
             const svgWrap = document.createElement('div');
             svgWrap.className = 'svg-preview';
-            
             const proportionalWidth = (svgData.width / maxSVGWidth) * 100;
             svgWrap.style.width = `${proportionalWidth}%`;
-            
             svgWrap.innerHTML = svgData.svg;
             item.innerHTML = `<h4>${svgData.name}</h4>`;
             item.appendChild(svgWrap);
@@ -564,149 +479,9 @@ document.addEventListener('DOMContentLoaded', function() {
             dl.textContent = 'Scarica SVG';
             dl.onclick = () => downloadSVG(svgData.name);
             item.appendChild(dl);
-            previewGrid.appendChild(item);
+            if(previewGrid) previewGrid.appendChild(item);
         });
     }
-
-    function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) {
-        const lineHeight = fontSize * 1.1;
-        const totalH = data.length * rowH; 
-        const svgHeight = totalH;
-        
-        let defsLayer = `<style>text{font-family:${FONT_FAMILY}}</style>`;
-        let backgroundLayer = '';
-        let textLayer = '';
-        let foregroundLayer = '';
-
-        data.forEach((row, ri) => {
-            let xPos = 0;
-            let yPos = ri * rowH;
-            const isHeader = ri === 0;
-
-            if (selectedLayout === 'strong') {
-                if (isHeader) {
-                    backgroundLayer += `<rect x="0" y="0" width="${totalW}" height="${rowH}" fill="#1d48b4"/>`;
-                } else if (ri % 2 === 1) {
-                    backgroundLayer += `<rect x="0" y="${yPos}" width="${totalW}" height="${rowH}" fill="#f0f0f0"/>`;
-                }
-            } else {
-                if (ri > 0) {
-                    backgroundLayer += `<line x1="0" y1="${yPos}" x2="${totalW}" y2="${yPos}" stroke="#c9cbd1" stroke-width="1"/>`;
-                }
-            }
-            
-            row.forEach((cell, ci) => {
-                const cW = colW[ci];
-                const clipId = `clip-${ri}-${ci}`;
-                defsLayer += `<clipPath id="${clipId}"><rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" /></clipPath>`;
-                xPos += cW;
-            });
-        });
-
-        data.forEach((row, ri) => {
-            let xPos = 0;
-            let yPos = ri * rowH;
-            const isHeader = ri === 0;
-
-            row.forEach((cell, ci) => {
-                const cW = colW[ci];
-                let txt = String(cell.value);
-                
-                let fillColor = isHeader ? (selectedLayout === 'strong' ? '#fff' : '#1d48b4') : '#4d4c4c';
-                let fontWeight = (isHeader ? 'bold' : ((boldFirstCol && ci === 0) || cell.style.bold ? 'bold' : 'normal'));
-                let fontStyle = cell.style.italic ? 'italic' : 'normal';
-                let textDec = cell.style.underline ? 'underline' : 'none';
-                if (isHeader) { txt = txt.toUpperCase(); }
-
-                const defaultPadH = fontSize * 0.3;
-                const firstColPadH = fontSize * 0.8;
-                const currentPadH = (ci === 0) ? firstColPadH : defaultPadH;
-                const avail = (cW - (currentPadH * 2)) * 0.98;
-                const clipId = `clip-${ri}-${ci}`;
-
-                let finalLines = [];
-                if (textHandlingMode === 'wrap') {
-                    const words = txt.split(' ');
-                    const lines = [];
-                    let cur = '';
-                    words.forEach(w => {
-                        const test = cur ? cur + ' ' + w : w;
-                        const wLen = measureText(test, fontSize, fontWeight === 'bold', fontStyle === 'italic');
-                        if (wLen > avail && cur) {
-                            lines.push(cur);
-                            cur = w;
-                        } else {
-                            cur = test;
-                        }
-                    });
-                    if (cur) lines.push(cur);
-                    const maxL = Math.min(lines.length, maxLines);
-                    if (lines.length > maxLines) {
-                        let last = lines[maxLines - 1];
-                        const ell = '...';
-                        while (measureText(last + ell, fontSize, fontWeight === 'bold', fontStyle === 'italic') > avail && last.length) last = last.slice(0, -1);
-                        lines[maxLines - 1] = last + ell;
-                    }
-                    finalLines = lines.slice(0, maxL);
-                } else {
-                    const fullWidth = measureText(txt, fontSize, fontWeight === 'bold', fontStyle === 'italic');
-                    if (fullWidth <= avail) {
-                        finalLines.push(txt);
-                    } else {
-                        let truncated = txt;
-                        const ell = '...';
-                        while (measureText(truncated + ell, fontSize, fontWeight === 'bold', fontStyle === 'italic') > avail && truncated.length > 0) {
-                            truncated = truncated.slice(0, -1);
-                        }
-                        finalLines.push(truncated + ell);
-                    }
-                }
-
-                const blockH = finalLines.length * lineHeight;
-                const startY = yPos + cellPadV + (rowH - cellPadV * 2 - blockH) / 2 + lineHeight * 0.8;
-                finalLines.forEach((ln, li) => {
-                    const textY = startY + li * lineHeight;
-                    const anchor = ci === 0 ? 'start' : 'middle';
-                    const textX = ci === 0 ? xPos + currentPadH : xPos + cW / 2;
-                    
-                    textLayer += `<text x="${textX}" y="${textY}" fill="${fillColor}" font-size="${fontSize}" 
-                            font-weight="${fontWeight}" font-style="${fontStyle}" text-decoration="${textDec}" 
-                            text-anchor="${anchor}" dominant-baseline="alphabetic" clip-path="url(#${clipId})"
-                            alignment-baseline="central">${escapeXml(ln)}</text>`;
-                });
-                xPos += cW;
-            });
-        });
-
-        if (selectedLayout === 'strong') {
-            data.forEach((row, ri) => {
-                let xPos = 0;
-                let yPos = ri * rowH;
-                row.forEach((cell, ci) => {
-                    const cW = colW[ci];
-                    foregroundLayer += `<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="none" stroke="#1d48b4" stroke-width="1"/>`;
-                    xPos += cW;
-                });
-            });
-        }
-        
-        if (selectedLayout === 'light') {
-            foregroundLayer += `<line x1="0" y1="${rowH}" x2="${totalW}" y2="${rowH}" stroke="#1d48b4" stroke-width="2"/>`;
-            foregroundLayer += `<line x1="0" y1="${totalH}" x2="${totalW}" y2="${totalH}" stroke="#c9cbd1" stroke-width="1"/>`;
-        } else { // strong
-            const outerStrokeWidth = 2;
-            foregroundLayer += `<rect x="0" y="0" width="${totalW}" height="${totalH}" fill="none" stroke="#1d48b4" stroke-width="${outerStrokeWidth}"/>`;
-        }
-
-        return `<svg width="${totalW}" height="${svgHeight}" viewBox="0 0 ${totalW} ${svgHeight}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`
-            + `<defs>${defsLayer}</defs>`
-            + backgroundLayer
-            + textLayer
-            + foregroundLayer
-            + `</svg>`;
-    }
-
-    function escapeXml(str){ return str.replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'''); }
     
     function downloadSVG(name){ 
         const svgData = generatedSVGs.find(s => s.name === name); 
@@ -716,22 +491,25 @@ document.addEventListener('DOMContentLoaded', function() {
         const a = document.createElement('a'); 
         a.href = url; 
         a.download = `${name}.svg`; 
-        document.body.appendChild(a); // Aggiungi al DOM
-        a.click(); // Simula il click
-        document.body.removeChild(a); // Rimuovi dal DOM
-        URL.revokeObjectURL(url); // Libera memoria
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
     
-    document.getElementById('downloadAllBtn').addEventListener('click', function(){ 
-        this.innerHTML='<span>Download in corso...</span>'; 
-        generatedSVGs.forEach((s, i) => setTimeout(() => downloadSVG(s.name), i * 200)); 
-        setTimeout(() => { 
-            this.innerHTML='<span>Scarica tutte le immagini</span>'; 
-            showStatus('Download completato!', 'success'); 
-        }, generatedSVGs.length * 200 + 500); 
-    });
+    // --- Funzioni di calcolo e utilità (invariate) ---
+    const FONT_FAMILY = "'Avenir Next LT Pro', sans-serif";
+    function ptToPx(pt){ return pt*1.333; }
+    function formatNumber(val){ if(typeof val!=='number') return val; const abs=Math.abs(val); let f; if(abs>=1e6) f=(val/1e6).toFixed(2).replace('.',',')+'M'; else if(abs>=1e3) f=(val/1e3).toFixed(2).replace('.',',')+'K'; else f=val.toString(); f=f.replace(/,00([MK])/,'$1').replace(/,0([MK])/,'$1'); return f; }
+    function measureText(text,fontSize,bold=false,italic=false){ const c=document.createElement('canvas').getContext('2d'); c.font=`${italic?'italic ':''}${bold?'bold ':''}${fontSize}px ${FONT_FAMILY}`; return c.measureText(text).width; }
+    function formatDate(date) { if (!(date instanceof Date) || isNaN(date)) return date; const day = String(date.getDate()).padStart(2, '0'); const month = String(date.getMonth() + 1).padStart(2, '0'); const year = date.getFullYear(); return `${day}/${month}/${year}`; }
+    function parseDate(dateStr) { if (typeof dateStr !== 'string') return null; const parts = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if (!parts) return null; const dt = new Date(parts[3], parts[2] - 1, parts[1]); return isNaN(dt.getTime()) ? null : dt; }
+    function compareRows(rowA, rowB, columnIndex, direction) { const valA = rowA[columnIndex]?.value; const valB = rowB[columnIndex]?.value; let result = 0; const dateA = parseDate(valA); const dateB = parseDate(valB); if (dateA && dateB) { result = dateA.getTime() - dateB.getTime(); } else { const numA = parseFloat(String(valA).replace(',', '.')); const numB = parseFloat(String(valB).replace(',', '.')); if (!isNaN(numA) && !isNaN(numB)) { result = numA - numB; } else { result = String(valA).localeCompare(String(valB), 'it', { numeric: true }); } } return direction === 'asc' ? result : -result; }
+    function calculateColumnWidths(data, fontSize) { const cols = data[0].length; const widths = new Array(cols).fill(0); const defaultPadH = fontSize * 0.3; const firstColPadH = fontSize * 0.8; data.forEach((row, rIdx) => { row.forEach((cell, cIdx) => { const isBold = (rIdx === 0) || (boldFirstCol && cIdx === 0) || cell.style.bold; const isItalic = cell.style.italic; const currentPadH = (cIdx === 0) ? firstColPadH : defaultPadH; const text = String(cell.value); const words = text.split(/\s+/); let maxWordWidth = 0; if (words.length > 0) { words.forEach(word => { const wordWidth = measureText(word, fontSize, isBold, isItalic); if (wordWidth > maxWordWidth) maxWordWidth = wordWidth; }); } else { maxWordWidth = measureText(text, fontSize, isBold, isItalic); } const requiredWidth = maxWordWidth + (currentPadH * 2); if (requiredWidth > widths[cIdx]) widths[cIdx] = requiredWidth; }); }); const minWidth = 80; widths.forEach((w, i) => { widths[i] = Math.max(w, minWidth); }); return widths; }
+    function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) { const lineHeight = fontSize * 1.1; const totalH = data.length * rowH; const svgHeight = totalH; let defsLayer = `<style>text{font-family:${FONT_FAMILY}}</style>`; let backgroundLayer = ''; let textLayer = ''; let foregroundLayer = ''; data.forEach((row, ri) => { let xPos = 0; let yPos = ri * rowH; const isHeader = ri === 0; if (selectedLayout === 'strong') { if (isHeader) backgroundLayer += `<rect x="0" y="0" width="${totalW}" height="${rowH}" fill="#1d48b4"/>`; else if (ri % 2 === 1) backgroundLayer += `<rect x="0" y="${yPos}" width="${totalW}" height="${rowH}" fill="#f0f0f0"/>`; } else { if (ri > 0) backgroundLayer += `<line x1="0" y1="${yPos}" x2="${totalW}" y2="${yPos}" stroke="#c9cbd1" stroke-width="1"/>`; } row.forEach((cell, ci) => { const cW = colW[ci]; const clipId = `clip-${ri}-${ci}`; defsLayer += `<clipPath id="${clipId}"><rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" /></clipPath>`; xPos += cW; }); }); data.forEach((row, ri) => { let xPos = 0; let yPos = ri * rowH; const isHeader = ri === 0; row.forEach((cell, ci) => { const cW = colW[ci]; let txt = String(cell.value); let fillColor = isHeader ? (selectedLayout === 'strong' ? '#fff' : '#1d48b4') : '#4d4c4c'; let fontWeight = (isHeader ? 'bold' : ((boldFirstCol && ci === 0) || cell.style.bold ? 'bold' : 'normal')); let fontStyle = cell.style.italic ? 'italic' : 'normal'; let textDec = cell.style.underline ? 'underline' : 'none'; if (isHeader) txt = txt.toUpperCase(); const defaultPadH = fontSize * 0.3; const firstColPadH = fontSize * 0.8; const currentPadH = (ci === 0) ? firstColPadH : defaultPadH; const avail = (cW - (currentPadH * 2)) * 0.98; const clipId = `clip-${ri}-${ci}`; let finalLines = []; if (textHandlingMode === 'wrap') { const words = txt.split(' '); const lines = []; let cur = ''; words.forEach(w => { const test = cur ? cur + ' ' + w : w; const wLen = measureText(test, fontSize, fontWeight === 'bold', fontStyle === 'italic'); if (wLen > avail && cur) { lines.push(cur); cur = w; } else cur = test; }); if (cur) lines.push(cur); const maxL = Math.min(lines.length, maxLines); if (lines.length > maxLines) { let last = lines[maxLines - 1]; const ell = '...'; while (measureText(last + ell, fontSize, fontWeight === 'bold', fontStyle === 'italic') > avail && last.length) last = last.slice(0, -1); lines[maxLines - 1] = last + ell; } finalLines = lines.slice(0, maxL); } else { const fullWidth = measureText(txt, fontSize, fontWeight === 'bold', fontStyle === 'italic'); if (fullWidth <= avail) finalLines.push(txt); else { let truncated = txt; const ell = '...'; while (measureText(truncated + ell, fontSize, fontWeight === 'bold', fontStyle === 'italic') > avail && truncated.length > 0) truncated = truncated.slice(0, -1); finalLines.push(truncated + ell); } } const blockH = finalLines.length * lineHeight; const startY = yPos + cellPadV + (rowH - cellPadV * 2 - blockH) / 2 + lineHeight * 0.8; finalLines.forEach((ln, li) => { const textY = startY + li * lineHeight; const anchor = ci === 0 ? 'start' : 'middle'; const textX = ci === 0 ? xPos + currentPadH : xPos + cW / 2; textLayer += `<text x="${textX}" y="${textY}" fill="${fillColor}" font-size="${fontSize}" font-weight="${fontWeight}" font-style="${fontStyle}" text-decoration="${textDec}" text-anchor="${anchor}" dominant-baseline="alphabetic" clip-path="url(#${clipId})" alignment-baseline="central">${escapeXml(ln)}</text>`; }); xPos += cW; }); }); if (selectedLayout === 'strong') { data.forEach((row, ri) => { let xPos = 0; let yPos = ri * rowH; row.forEach((cell, ci) => { const cW = colW[ci]; foregroundLayer += `<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="none" stroke="#1d48b4" stroke-width="1"/>`; xPos += cW; }); }); } if (selectedLayout === 'light') { foregroundLayer += `<line x1="0" y1="${rowH}" x2="${totalW}" y2="${rowH}" stroke="#1d48b4" stroke-width="2"/>`; foregroundLayer += `<line x1="0" y1="${totalH}" x2="${totalW}" y2="${totalH}" stroke="#c9cbd1" stroke-width="1"/>`; } else { const outerStrokeWidth = 2; foregroundLayer += `<rect x="0" y="0" width="${totalW}" height="${totalH}" fill="none" stroke="#1d48b4" stroke-width="${outerStrokeWidth}"/>`; } return `<svg width="${totalW}" height="${svgHeight}" viewBox="0 0 ${totalW} ${svgHeight}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><defs>${defsLayer}</defs>${backgroundLayer}${textLayer}${foregroundLayer}</svg>`; }
+    function escapeXml(str){ return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;'); }
 
-}); // <-- Chiusura del DOMContentLoaded listener
+});
 </script>
 
 </body>
