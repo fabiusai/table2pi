@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Excel to SVG Converter</title>
-<link rel="icon" href="favicon.ico">
 
     <style>
-        /* CSS Invariato */
+        /* FONT RIPRISTINATO AD AVENIR NEXT LT PRO */
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Avenir Next LT Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background:#f5f5f5; color:#333; line-height:1.6; min-height:100vh;
         }
         .container { width:100%; margin:0; padding:20px; }
@@ -154,14 +153,10 @@
                         <option value="truncate">Tronca testo (Riga singola)</option>
                     </select>
                 </div>
-                
-                <!-- ====== NUOVO CONTROLLO HTML AGGIUNTO QUI ====== -->
                 <div class="control-group-item" id="maxLinesControlGroup">
                     <label for="maxLinesInput">Max righe per cella:</label>
                     <input type="number" id="maxLinesInput" value="3" min="1" max="10">
                 </div>
-                <!-- ====== FINE NUOVO CONTROLLO HTML ====== -->
-
             </div>
             <div class="bold-first-col">
                 <input type="checkbox" id="boldFirstCol" checked>
@@ -193,8 +188,6 @@ let widthPercentage = 75;
 let isMaxRowsEnabled = false;
 let maxRowsPerPage = 25;
 let textHandlingMode = 'wrap';
-
-// ====== NUOVA VARIABILE GLOBALE AGGIUNTA QUI ======
 let maxLinesPerCell = 3; 
 
 const uploadArea       = document.getElementById('uploadArea');
@@ -211,22 +204,17 @@ const widthPercentageValue = document.getElementById('widthPercentageValue');
 const maxRowsControl = document.getElementById('maxRowsControl');
 const maxRowsInput = document.getElementById('maxRowsInput');
 const textHandlingSelect = document.getElementById('textHandlingSelect');
-
-// ====== NUOVI ELEMENTI DOM E LISTENER AGGIUNTI QUI ======
 const maxLinesControlGroup = document.getElementById('maxLinesControlGroup');
 const maxLinesInput = document.getElementById('maxLinesInput');
 
 maxLinesInput.addEventListener('input', (e) => {
     maxLinesPerCell = parseInt(e.target.value) || 3;
 });
-
 textHandlingSelect.addEventListener('change', (e) => {
     textHandlingMode = e.target.value;
-    // Mostra/nasconde il controllo del numero massimo di righe
     const isWrapMode = textHandlingMode === 'wrap';
     maxLinesControlGroup.style.display = isWrapMode ? 'flex' : 'none';
 });
-
 boldFirstColChk.addEventListener('change', () => boldFirstCol = boldFirstColChk.checked);
 cellSpacingInput.addEventListener('change', () => {
     const v = parseFloat(cellSpacingInput.value);
@@ -249,7 +237,11 @@ widthPercentageSlider.addEventListener('input', (e) => {
 maxRowsInput.addEventListener('input', (e) => {
     maxRowsPerPage = parseInt(e.target.value) || 25;
 });
+
+// ====== RIGA CRUCIALE RIPRISTINATA ======
 uploadArea.addEventListener('click', () => fileInput.click());
+// =======================================
+
 uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
 uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
 uploadArea.addEventListener('drop', e => {
@@ -289,7 +281,8 @@ document.getElementById('processBtn').addEventListener('click',function(){
 
 function ptToPx(pt){ return pt*1.333; }
 function formatNumber(val){ if(typeof val!=='number') return val; const abs=Math.abs(val); let f; if(abs>=1e6) f=(val/1e6).toFixed(2).replace('.',',')+'M'; else if(abs>=1e3) f=(val/1e3).toFixed(2).replace('.',',')+'K'; else f=val.toString(); f=f.replace(/,00([MK])/,'$1').replace(/,0([MK])/,'$1'); return f; }
-function measureText(text,fontSize,bold=false,italic=false){ const c=document.createElement('canvas').getContext('2d'); c.font=`${italic?'italic ':''}${bold?'bold ':''}${fontSize}px \"Avenir Next LT Pro\", sans-serif`; return c.measureText(text).width; }
+const FONT_FAMILY = "'Avenir Next LT Pro', sans-serif";
+function measureText(text,fontSize,bold=false,italic=false){ const c=document.createElement('canvas').getContext('2d'); c.font=`${italic?'italic ':''}${bold?'bold ':''}${fontSize}px ${FONT_FAMILY}`; return c.measureText(text).width; }
 function formatDate(date) {
     if (!(date instanceof Date) || isNaN(date)) return date;
     const day = String(date.getDate()).padStart(2, '0');
@@ -328,7 +321,6 @@ function processWorkbook(){
     });
     if(generatedSVGs.length){ previewContainer.style.display='block'; showStatus(`Generate ${generatedSVGs.length} immagini SVG`,'success'); }
 }
-
 
 function calculateColumnWidths(data, fontSize) {
     const cols = data[0].length;
@@ -372,13 +364,10 @@ function calculateColumnWidths(data, fontSize) {
     return widths;
 }
 
-
 function createSVGTables(data,sheetName,fontSize,cellPadV){
-    // ====== MODIFICA CHIAVE QUI: L'altezza della riga ora dipende dall'impostazione dell'utente ======
     const currentMaxLines = textHandlingMode === 'wrap' ? maxLinesPerCell : 1;
     const lineHeight = fontSize * 1.1;
     const rowHeight = (currentMaxLines * lineHeight) + (cellPadV * 2);
-    // =========================================================================================
     
     const maxHeight = 912;
     const headerRows = 1;
@@ -476,34 +465,32 @@ function createSVGTables(data,sheetName,fontSize,cellPadV){
     });
 }
 
-// ====== MODIFICA CHIAVE QUI: Aggiunto il parametro `maxLines` ======
 function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) {
     const lineHeight = fontSize * 1.1;
     const totalH = data.length * rowH; 
     const svgHeight = totalH;
-
-    let svg = `<svg width="${totalW}" height="${svgHeight}" viewBox="0 0 ${totalW} ${svgHeight}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
-    svg += `<defs><style>@font-face{font-family:'Avenir Next LT Pro';src:local('Avenir Next LT Pro');} text{font-family:'Avenir Next LT Pro',sans-serif;}</style></defs>`;
-
-    if (selectedLayout === 'strong') {
-        data.forEach((row, ri) => { if (ri > 0 && ri % 2 === 1) { svg += `<rect x="0" y="${ri * rowH}" width="${totalW}" height="${rowH}" fill="#f0f0f0"/>`; } });
-    } else {
-        data.forEach((row, ri) => {
-            const y = ri * rowH;
-            if (ri > 0) svg += `<line x1="0" y1="${y}" x2="${totalW}" y2="${y}" stroke="#c9cbd1" stroke-width="1"/>`;
-        });
-        svg += `<line x1="0" y1="${rowH}" x2="${totalW}" y2="${rowH}" stroke="#1d48b4" stroke-width="2"/>`;
-        svg += `<line x1="0" y1="${totalH}" x2="${totalW}" y2="${totalH}" stroke="#c9cbd1" stroke-width="1"/>`;
-    }
+    
+    let defs = `<style>text{font-family:${FONT_FAMILY}}</style>`;
+    let body = '';
 
     let yPos = 0;
     data.forEach((row, ri) => {
         let xPos = 0;
         const isHeader = ri === 0;
+
+        if (selectedLayout === 'strong') {
+            if (ri > 0 && ri % 2 === 1) { 
+                body += `<rect x="0" y="${ri * rowH}" width="${totalW}" height="${rowH}" fill="#f0f0f0"/>`; 
+            }
+        } else {
+            const y = ri * rowH;
+            if (ri > 0) body += `<line x1="0" y1="${y}" x2="${totalW}" y2="${y}" stroke="#c9cbd1" stroke-width="1"/>`;
+        }
+        
         row.forEach((cell, ci) => {
             const cW = colW[ci];
             let txt = String(cell.value);
-            if (selectedLayout === 'strong' && isHeader) { svg += `<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="#1d48b4"/>`; }
+            if (selectedLayout === 'strong' && isHeader) { body += `<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="#1d48b4"/>`; }
             let fillColor = isHeader ? (selectedLayout === 'strong' ? '#fff' : '#1d48b4') : '#4d4c4c';
             let fontWeight = (isHeader ? 'bold' : ((boldFirstCol && ci === 0) || cell.style.bold ? 'bold' : 'normal'));
             let fontStyle = cell.style.italic ? 'italic' : 'normal';
@@ -514,9 +501,15 @@ function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) {
             const firstColPadH = fontSize * 0.8;
             const currentPadH = (ci === 0) ? firstColPadH : defaultPadH;
             const avail = cW - (currentPadH * 2);
-            let finalLines = [];
 
-            // ====== MODIFICA CHIAVE QUI: La logica ora usa il parametro `maxLines` ======
+            const clipId = `clip-${ri}-${ci}`;
+            const clipX = xPos;
+            const clipY = yPos;
+            const clipW = cW;
+            const clipH = rowH;
+            defs += `<clipPath id="${clipId}"><rect x="${clipX}" y="${clipY}" width="${clipW}" height="${clipH}" /></clipPath>`;
+
+            let finalLines = [];
             if (textHandlingMode === 'wrap') {
                 const words = txt.split(' ');
                 const lines = [];
@@ -540,7 +533,7 @@ function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) {
                     lines[maxLines - 1] = last + ell;
                 }
                 finalLines = lines.slice(0, maxL);
-            } else { // 'truncate'
+            } else {
                 const fullWidth = measureText(txt, fontSize, fontWeight === 'bold', fontStyle === 'italic');
                 if (fullWidth <= avail) {
                     finalLines.push(txt);
@@ -557,30 +550,38 @@ function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) {
             const blockH = finalLines.length * lineHeight;
             const startY = yPos + cellPadV + (rowH - cellPadV * 2 - blockH) / 2 + lineHeight * 0.8;
             
+            let textBlock = `<g clip-path="url(#${clipId})">`;
             finalLines.forEach((ln, li) => {
                 const textY = startY + li * lineHeight;
                 const anchor = ci === 0 ? 'start' : 'middle';
                 const textX = ci === 0 ? xPos + currentPadH : xPos + cW / 2;
                 
-                svg += `<text x="${textX}" y="${textY}" fill="${fillColor}" font-size="${fontSize}" 
+                textBlock += `<text x="${textX}" y="${textY}" fill="${fillColor}" font-size="${fontSize}" 
                          font-weight="${fontWeight}" font-style="${fontStyle}" text-decoration="${textDec}" 
                          text-anchor="${anchor}" dominant-baseline="alphabetic" 
                          alignment-baseline="central">${escapeXml(ln)}</text>`;
             });
+            textBlock += `</g>`;
+            body += textBlock;
 
-            if (selectedLayout === 'strong') svg += `<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="none" stroke="#1d48b4" stroke-width="1"/>`;
+            if (selectedLayout === 'strong') body += `<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="none" stroke="#1d48b4" stroke-width="1"/>`;
             xPos += cW;
         });
         yPos += rowH;
     });
 
-    if (selectedLayout === 'strong') {
+    if (selectedLayout === 'light') {
+        body += `<line x1="0" y1="${rowH}" x2="${totalW}" y2="${rowH}" stroke="#1d48b4" stroke-width="2"/>`;
+        body += `<line x1="0" y1="${totalH}" x2="${totalW}" y2="${totalH}" stroke="#c9cbd1" stroke-width="1"/>`;
+    } else { // strong
         const outerStrokeWidth = 2;
-        svg += `<rect x="0" y="0" width="${totalW}" height="${totalH}" fill="none" stroke="#1d48b4" stroke-width="${outerStrokeWidth}"/>`;
+        body += `<rect x="0" y="0" width="${totalW}" height="${totalH}" fill="none" stroke="#1d48b4" stroke-width="${outerStrokeWidth}"/>`;
     }
 
-    svg += '</svg>';
-    return svg;
+    return `<svg width="${totalW}" height="${svgHeight}" viewBox="0 0 ${totalW} ${svgHeight}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`
+         + `<defs>${defs}</defs>`
+         + body
+         + `</svg>`;
 }
 
 function escapeXml(str){ return str.replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'''); }
