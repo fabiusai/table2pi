@@ -6,7 +6,7 @@
     <title>Excel to SVG Converter</title>
 
     <style>
-        /* FONT RIPRISTINATO AD AVENIR NEXT LT PRO */
+        /* CSS Invariato */
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: 'Avenir Next LT Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -237,11 +237,7 @@ widthPercentageSlider.addEventListener('input', (e) => {
 maxRowsInput.addEventListener('input', (e) => {
     maxRowsPerPage = parseInt(e.target.value) || 25;
 });
-
-// ====== RIGA CRUCIALE RIPRISTINATA ======
 uploadArea.addEventListener('click', () => fileInput.click());
-// =======================================
-
 uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
 uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
 uploadArea.addEventListener('drop', e => {
@@ -500,7 +496,10 @@ function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) {
             const defaultPadH = fontSize * 0.3;
             const firstColPadH = fontSize * 0.8;
             const currentPadH = (ci === 0) ? firstColPadH : defaultPadH;
-            const avail = cW - (currentPadH * 2);
+            
+            // ====== MODIFICA CHIAVE: Applicazione del Margine di Sicurezza ======
+            // Usiamo il 98% della larghezza disponibile per il calcolo del testo a capo.
+            const avail = (cW - (currentPadH * 2)) * 0.98;
 
             const clipId = `clip-${ri}-${ci}`;
             const clipX = xPos;
