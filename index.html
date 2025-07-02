@@ -164,7 +164,6 @@
             </div>
         </div>
 
-        <!-- ====== NUOVA SEZIONE PER L'ORDINAMENTO ====== -->
         <div class="section" id="sortSection" style="display:none;">
             <h2 class="section-title">3. Ordina i dati (Opzionale)</h2>
             <div class="control-block">
@@ -186,7 +185,7 @@
 
         <div class="section" style="display:none;" id="processSection">
             <h2 class="section-title">4. Genera le immagini SVG</h2>
-            <button class="btn" id="generateBtn"><span>Elabora tabelle</span></button>
+            <button class="btn" id="processBtn"><span>Elabora tabelle</span></button>
         </div>
         <div class="preview-container" id="previewContainer">
             <div class="section">
@@ -227,9 +226,10 @@ const maxRowsInput = document.getElementById('maxRowsInput');
 const textHandlingSelect = document.getElementById('textHandlingSelect');
 const maxLinesControlGroup = document.getElementById('maxLinesControlGroup');
 const maxLinesInput = document.getElementById('maxLinesInput');
-const generateBtn = document.getElementById('generateBtn');
 
-// ====== NUOVI ELEMENTI DOM PER L'ORDINAMENTO ======
+// ====== CORREZIONE CRUCIALE DELL'ID ======
+const processBtn = document.getElementById('processBtn');
+
 const sortSection = document.getElementById('sortSection');
 const sortColumnSelect = document.getElementById('sortColumnSelect');
 
@@ -272,7 +272,6 @@ uploadArea.addEventListener('drop', e => {
 });
 fileInput.addEventListener('change', e => { if(e.target.files.length) handleFile(e.target.files[0]); });
 
-// ====== MODIFICA ALLA GESTIONE DEL FILE CARICATO ======
 function handleFile(file){
     const reader = new FileReader();
     reader.onload = e => {
@@ -281,7 +280,6 @@ function handleFile(file){
             workbookData = XLSX.read(data,{type:'array', cellStyles:true, cellFormula:true, cellDates:true});
             showStatus('File caricato con successo!','success');
             
-            // Popola le opzioni di ordinamento
             populateSortOptions();
             sortSection.style.display = 'block';
             processSection.style.display='block';
@@ -323,7 +321,7 @@ document.querySelectorAll('.layout-option').forEach(opt=>{
         selectedLayout = opt.dataset.layout;
     });
 });
-generateBtn.addEventListener('click',function(){
+processBtn.addEventListener('click',function(){
     this.disabled=true; this.innerHTML='<span>Elaborazione in corso...</span>';
     setTimeout(()=>{ processWorkbook(); this.disabled=false; this.innerHTML='<span>Elabora tabelle</span>'; },100);
 });
@@ -340,26 +338,28 @@ function formatDate(date) {
     return `${day}/${month}/${year}`;
 }
 
-// ====== NUOVA FUNZIONE PER PARSARE LE DATE GG/MM/AAAA ======
 function parseDate(dateStr) {
     if (typeof dateStr !== 'string') return null;
     const parts = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (!parts) return null;
-    // Mese è 0-indicizzato in JS Date, quindi -1
     const dt = new Date(parts[3], parts[2] - 1, parts[1]);
     return isNaN(dt.getTime()) ? null : dt;
 }
 
-// ====== NUOVA FUNZIONE DI COMPARAZIONE INTELLIGENTE ======
 function compareRows(rowA, rowB, columnIndex, direction) {
-    const valA = rowA[columnIndex]?.value;
-    const valB = rowB[columnIndex]?.value;
+    const cellA = rowA[columnIndex];
+    const cellB = rowB[columnIndex];
+
+    // Usa rawValue se esiste, altrimenti il valore formattato
+    const valA = cellA?.rawValue !== undefined ? cellA.rawValue : cellA?.value;
+    const valB = cellB?.rawValue !== undefined ? cellB.rawValue : cellB?.value;
 
     let result = 0;
 
-    // 1. Tenta di comparare come date
-    const dateA = parseDate(valA);
-    const dateB = parseDate(valB);
+    // 1. Tenta di comparare come date (sia oggetti Date che stringhe)
+    const dateA = valA instanceof Date ? valA : parseDate(valA);
+    const dateB = valB instanceof Date ? valB : parseDate(valB);
+
     if (dateA && dateB) {
         result = dateA.getTime() - dateB.getTime();
     } else {
@@ -383,7 +383,6 @@ function processWorkbook(){
     const fontSize = parseInt(document.getElementById('fontSize').value);
     const cellPaddingV = ptToPx(cellSpacingPt);
     
-    // ====== LOGICA DI ORDINAMENTO PRIMA DELL'ELABORAZIONE ======
     const sortColumnIndex = parseInt(sortColumnSelect.value);
     const sortDirection = document.querySelector('input[name="sortDirection"]:checked').value;
 
@@ -398,10 +397,10 @@ function processWorkbook(){
                 const cell = ws[addr] || {};
                 let v = cell.v !== undefined ? cell.v : '';
 
-                // Importante: non formattare qui, ma usare il valore grezzo per l'ordinamento
-                const rawValue = v;
-                if (v instanceof Date) { v = formatDate(v); } 
-                else if (typeof v === 'number' && !XLSX.SSF.is_date(cell.z)) { v = formatNumber(v); }
+                const rawValue = cell.v;
+                if (cell.t === 'd' && cell.v instanceof Date) { v = formatDate(cell.v); } 
+                else if (cell.t === 'n' && cell.z && XLSX.SSF.is_date(cell.z)) { v = formatDate(XLSX.SSF.parse_date_code(cell.v)); }
+                else if (typeof v === 'number') { v = formatNumber(v); }
 
                 const st = cell.s||{};
                 const style={ bold:st.font?.bold, italic:st.font?.italic, underline:st.font?.underline };
@@ -411,11 +410,10 @@ function processWorkbook(){
             tableData.push(row);
         }
         
-        // Applica l'ordinamento se selezionato
         if (sortColumnIndex > -1 && tableData.length > 1) {
-            const header = tableData.shift(); // Rimuovi l'header
+            const header = tableData.shift();
             tableData.sort((a, b) => compareRows(a, b, sortColumnIndex, sortDirection));
-            tableData.unshift(header); // Aggiungi di nuovo l'header
+            tableData.unshift(header);
         }
         
         if(tableData.length) createSVGTables(tableData,sheetName,fontSize,cellPaddingV);
