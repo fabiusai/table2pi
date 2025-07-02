@@ -55,8 +55,10 @@
             margin-top:20px; padding:20px; background:#f0f4ff; border-radius:8px; 
             display:flex; flex-wrap:wrap; gap:20px; align-items:center; 
         }
-        .control-block label{ color:#1d48b4; font-weight:600; margin-right:10px; }
-        .control-block input[type="number"]{ width:80px; padding:8px; border:2px solid #1d48b4; border-radius:4px; font-size:16px; }
+        .control-block label{ color:#1d48b4; font-weight:600; }
+        .control-group-item { display: flex; align-items: center; gap: 10px; }
+        .control-block input[type="number"], .control-block select { width:auto; padding:8px; border:2px solid #1d48b4; border-radius:4px; font-size:16px; }
+        .control-block input[type="number"] { width: 80px; }
         .bold-first-col{ display:flex; align-items:center; gap:10px; margin-top:15px; }
         .btn{ background:#1d48b4; color:#fff; border:none; padding:15px 40px; font:600 1.1em 'Avenir Next LT Pro',sans-serif; border-radius:8px; cursor:pointer; transition:.3s; display:inline-flex; align-items:center; gap:10px; }
         .btn:hover{ background:#0e2a7a; transform:translateY(-2px); box-shadow:0 4px 12px rgba(29,72,180,.3); }
@@ -95,7 +97,6 @@
 
 <div class="container">
     <div class="main-content">
-        <!-- HTML Invariato -->
         <div class="section">
             <h2 class="section-title">1. Carica il file Excel</h2>
             <div class="upload-area" id="uploadArea">
@@ -137,10 +138,29 @@
                 </div>
             </div>
             <div class="control-block">
-                <label for="fontSize">Dimensione font (px):</label>
-                <input type="number" id="fontSize" value="18" min="8" max="32">
-                <label for="cellSpacing">Spaziatura verticale (pt):</label>
-                <input type="number" id="cellSpacing" value="4" min="0" max="20">
+                <div class="control-group-item">
+                    <label for="fontSize">Font (px):</label>
+                    <input type="number" id="fontSize" value="18" min="8" max="32">
+                </div>
+                <div class="control-group-item">
+                    <label for="cellSpacing">Spaz. vert. (pt):</label>
+                    <input type="number" id="cellSpacing" value="4" min="0" max="20">
+                </div>
+                <div class="control-group-item">
+                    <label for="textHandlingSelect">Gestione testo:</label>
+                    <select id="textHandlingSelect">
+                        <option value="wrap" selected>Testo a capo (Multi-riga)</option>
+                        <option value="truncate">Tronca testo (Riga singola)</option>
+                    </select>
+                </div>
+                
+                <!-- ====== NUOVO CONTROLLO HTML AGGIUNTO QUI ====== -->
+                <div class="control-group-item" id="maxLinesControlGroup">
+                    <label for="maxLinesInput">Max righe per cella:</label>
+                    <input type="number" id="maxLinesInput" value="3" min="1" max="10">
+                </div>
+                <!-- ====== FINE NUOVO CONTROLLO HTML ====== -->
+
             </div>
             <div class="bold-first-col">
                 <input type="checkbox" id="boldFirstCol" checked>
@@ -162,7 +182,6 @@
 </div>
 
 <script>
-/* ====== JavaScript con la sola modifica in createSVG =====*/
 let workbookData = null;
 let selectedLayout = 'light';
 let generatedSVGs = [];
@@ -172,6 +191,10 @@ let widthMode = 'full';
 let widthPercentage = 75;
 let isMaxRowsEnabled = false;
 let maxRowsPerPage = 25;
+let textHandlingMode = 'wrap';
+
+// ====== NUOVA VARIABILE GLOBALE AGGIUNTA QUI ======
+let maxLinesPerCell = 3; 
 
 const uploadArea       = document.getElementById('uploadArea');
 const fileInput        = document.getElementById('fileInput');
@@ -186,13 +209,28 @@ const widthPercentageSlider = document.getElementById('widthPercentageSlider');
 const widthPercentageValue = document.getElementById('widthPercentageValue');
 const maxRowsControl = document.getElementById('maxRowsControl');
 const maxRowsInput = document.getElementById('maxRowsInput');
+const textHandlingSelect = document.getElementById('textHandlingSelect');
+
+// ====== NUOVI ELEMENTI DOM E LISTENER AGGIUNTI QUI ======
+const maxLinesControlGroup = document.getElementById('maxLinesControlGroup');
+const maxLinesInput = document.getElementById('maxLinesInput');
+
+maxLinesInput.addEventListener('input', (e) => {
+    maxLinesPerCell = parseInt(e.target.value) || 3;
+});
+
+textHandlingSelect.addEventListener('change', (e) => {
+    textHandlingMode = e.target.value;
+    // Mostra/nasconde il controllo del numero massimo di righe
+    const isWrapMode = textHandlingMode === 'wrap';
+    maxLinesControlGroup.style.display = isWrapMode ? 'flex' : 'none';
+});
 
 boldFirstColChk.addEventListener('change', () => boldFirstCol = boldFirstColChk.checked);
 cellSpacingInput.addEventListener('change', () => {
     const v = parseFloat(cellSpacingInput.value);
     cellSpacingPt = isNaN(v) ? 4 : v;
 });
-
 widthModeRadios.forEach(radio => {
     radio.addEventListener('change', (e) => {
         widthMode = e.target.value;
@@ -210,7 +248,6 @@ widthPercentageSlider.addEventListener('input', (e) => {
 maxRowsInput.addEventListener('input', (e) => {
     maxRowsPerPage = parseInt(e.target.value) || 25;
 });
-
 uploadArea.addEventListener('click', () => fileInput.click());
 uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
 uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
@@ -231,14 +268,12 @@ function handleFile(file){
         }catch(err){ showStatus('Errore nel caricamento del file','error'); console.error(err);} };
     reader.readAsArrayBuffer(file);
 }
-
 function showStatus(msg,type){
     statusMessage.textContent=msg;
     statusMessage.className=`status-message ${type}`;
     statusMessage.style.display='block';
     setTimeout(()=>statusMessage.style.display='none',3000);
 }
-
 document.querySelectorAll('.layout-option').forEach(opt=>{
     opt.addEventListener('click',()=>{
         document.querySelectorAll('.layout-option').forEach(o=>o.classList.remove('selected'));
@@ -246,7 +281,6 @@ document.querySelectorAll('.layout-option').forEach(opt=>{
         selectedLayout = opt.dataset.layout;
     });
 });
-
 document.getElementById('processBtn').addEventListener('click',function(){
     this.disabled=true; this.innerHTML='<span>Elaborazione in corso...</span>';
     setTimeout(()=>{ processWorkbook(); this.disabled=false; this.innerHTML='<span>Elabora tabelle</span>'; },100);
@@ -291,36 +325,66 @@ function processWorkbook(){
         }
         if(tableData.length) createSVGTables(tableData,sheetName,fontSize,cellPaddingV);
     });
-
     if(generatedSVGs.length){ previewContainer.style.display='block'; showStatus(`Generate ${generatedSVGs.length} immagini SVG`,'success'); }
 }
 
-function calculateColumnWidths(data,fontSize){
-    const cols=data[0].length; const widths=new Array(cols).fill(0); 
+
+function calculateColumnWidths(data, fontSize) {
+    const cols = data[0].length;
+    const widths = new Array(cols).fill(0);
     const defaultPadH = fontSize * 0.3;
     const firstColPadH = fontSize * 0.8;
 
-    data.forEach((row,rIdx)=>{
-        row.forEach((cell,cIdx)=>{
-            const isBold=(rIdx===0)||(boldFirstCol&&cIdx===0)||cell.style.bold;
+    data.forEach((row, rIdx) => {
+        row.forEach((cell, cIdx) => {
+            const isBold = (rIdx === 0) || (boldFirstCol && cIdx === 0) || cell.style.bold;
+            const isItalic = cell.style.italic;
             const currentPadH = (cIdx === 0) ? firstColPadH : defaultPadH;
-            const w = measureText(String(cell.value), fontSize, isBold, cell.style.italic) + (currentPadH * 2);
-            widths[cIdx]=Math.max(widths[cIdx], w);
+            const text = String(cell.value);
+
+            const words = text.split(/\s+/);
+            let maxWordWidth = 0;
+            if (words.length > 0) {
+                words.forEach(word => {
+                    const wordWidth = measureText(word, fontSize, isBold, isItalic);
+                    if (wordWidth > maxWordWidth) {
+                        maxWordWidth = wordWidth;
+                    }
+                });
+            } else {
+                maxWordWidth = measureText(text, fontSize, isBold, isItalic);
+            }
+           
+            const requiredWidth = maxWordWidth + (currentPadH * 2);
+            
+            if (requiredWidth > widths[cIdx]) {
+                widths[cIdx] = requiredWidth;
+            }
         });
     });
-    const min=120; widths.forEach((w,i)=>widths[i]=Math.max(w,min));
-    let total=widths.reduce((s,w)=>s+w,0); const maxTotal=2048; const maxCol=maxTotal*0.15;
-    widths.forEach((w,i)=>{ if(w>maxCol){ widths[i]=maxCol; } });
+
+    const minWidth = 80;
+    widths.forEach((w, i) => {
+        widths[i] = Math.max(w, minWidth);
+    });
+
     return widths;
 }
 
+
 function createSVGTables(data,sheetName,fontSize,cellPadV){
-    const lineHeight=fontSize*1.1; const maxLines=3; const rowHeight=(maxLines*lineHeight)+(cellPadV*2);
-    const maxHeight=912; const headerRows=1; 
+    // ====== MODIFICA CHIAVE QUI: L'altezza della riga ora dipende dall'impostazione dell'utente ======
+    const currentMaxLines = textHandlingMode === 'wrap' ? maxLinesPerCell : 1;
+    const lineHeight = fontSize * 1.1;
+    const rowHeight = (currentMaxLines * lineHeight) + (cellPadV * 2);
+    // =========================================================================================
+    
+    const maxHeight = 912;
+    const headerRows = 1;
     const maxSVGWidth = 2048;
     
-    const initialColW = calculateColumnWidths(data,fontSize);
-    const initialTotalW = initialColW.reduce((s,w)=>s+w,0);
+    const initialColW = calculateColumnWidths(data, fontSize);
+    const initialTotalW = initialColW.reduce((s, w) => s + w, 0);
 
     let finalColW;
     let finalTotalW;
@@ -330,13 +394,13 @@ function createSVGTables(data,sheetName,fontSize,cellPadV){
         const scale = targetWidth / initialTotalW;
         finalColW = initialColW.map(w => w * scale);
         finalTotalW = targetWidth;
-    } else { // widthMode === 'full'
+    } else { 
         if (initialTotalW > maxSVGWidth) {
             const scale = maxSVGWidth / initialTotalW;
             finalColW = initialColW.map(w => w * scale);
         } else {
-            const extra = (maxSVGWidth - initialTotalW) / initialColW.length;
-            finalColW = initialColW.map(w => w + extra);
+            const totalExtraSpace = maxSVGWidth - initialTotalW;
+            finalColW = initialColW.map(w => w + totalExtraSpace * (w / initialTotalW));
         }
         finalTotalW = maxSVGWidth;
     }
@@ -344,11 +408,12 @@ function createSVGTables(data,sheetName,fontSize,cellPadV){
     finalTotalW = Math.floor(finalColW.reduce((s, w) => s + w, 0));
     finalColW = finalColW.map(w => Math.floor(w));
 
+    const header = data.slice(0, headerRows);
+    let current = [];
+    let curH = 0;
+    let page = 1;
 
-    const header=data.slice(0,headerRows);
-    let current=[]; let curH=0; let page=1;
-
-    for(let i=0;i<data.length;i++){
+    for(let i = 0; i < data.length; i++){
         const isHeader = i < headerRows;
         
         let shouldPaginate = false;
@@ -367,99 +432,134 @@ function createSVGTables(data,sheetName,fontSize,cellPadV){
         if (shouldPaginate) {
             generatedSVGs.push({ 
                 name: `${sheetName}_${page}`, 
-                svg: createSVG(current, finalColW, finalTotalW, fontSize, cellPadV),
+                svg: createSVG(current, finalColW, finalTotalW, fontSize, cellPadV, rowHeight, currentMaxLines),
                 width: finalTotalW 
             });
-            current=[...header]; 
-            curH=rowHeight*headerRows; 
+            current = [...header]; 
+            curH = rowHeight * headerRows; 
             page++;
         }
 
         if(!isHeader || !current.length){ 
             current.push(data[i]); 
-            curH+=rowHeight; 
+            curH += rowHeight; 
         }
     }
-    if(current.length>headerRows) {
+    if(current.length > headerRows) {
         generatedSVGs.push({ 
             name: `${sheetName}_${page}`, 
-            svg: createSVG(current, finalColW, finalTotalW, fontSize, cellPadV),
+            svg: createSVG(current, finalColW, finalTotalW, fontSize, cellPadV, rowHeight, currentMaxLines),
             width: finalTotalW
         });
     }
 
-    generatedSVGs.slice(-page+1).forEach(svgData=>{
-        const item=document.createElement('div');
-        item.className='preview-item';
-        const svgWrap=document.createElement('div');
-        svgWrap.className='svg-preview';
+    generatedSVGs.slice(-page + 1).forEach(svgData => {
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        const svgWrap = document.createElement('div');
+        svgWrap.className = 'svg-preview';
         
         const proportionalWidth = (svgData.width / maxSVGWidth) * 100;
         svgWrap.style.width = `${proportionalWidth}%`;
         
-        svgWrap.innerHTML=svgData.svg;
-        item.innerHTML=`<h4>${svgData.name}</h4>`;
+        svgWrap.innerHTML = svgData.svg;
+        item.innerHTML = `<h4>${svgData.name}</h4>`;
         item.appendChild(svgWrap);
-        const dl=document.createElement('button');
-        dl.className='btn secondary';
-        dl.style.marginTop='10px';
-        dl.textContent='Scarica SVG';
-        dl.onclick=()=>downloadSVG(svgData.name);
+        const dl = document.createElement('button');
+        dl.className = 'btn secondary';
+        dl.style.marginTop = '10px';
+        dl.textContent = 'Scarica SVG';
+        dl.onclick = () => downloadSVG(svgData.name);
         item.appendChild(dl);
         previewGrid.appendChild(item);
     });
 }
 
-function createSVG(data,colW,totalW,fontSize,cellPadV){
-    const lineHeight=fontSize*1.1; const maxLines=3; const rowH=(maxLines*lineHeight)+(cellPadV*2);
-    const totalH=data.length*rowH; 
+// ====== MODIFICA CHIAVE QUI: Aggiunto il parametro `maxLines` ======
+function createSVG(data, colW, totalW, fontSize, cellPadV, rowH, maxLines) {
+    const lineHeight = fontSize * 1.1;
+    const totalH = data.length * rowH; 
     const svgHeight = totalH;
 
-    let svg=`<svg width="${totalW}" height="${svgHeight}" viewBox="0 0 ${totalW} ${svgHeight}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
-    svg+=`<defs><style>@font-face{font-family:'Avenir Next LT Pro';src:local('Avenir Next LT Pro');} text{font-family:'Avenir Next LT Pro',sans-serif;}</style></defs>`;
+    let svg = `<svg width="${totalW}" height="${svgHeight}" viewBox="0 0 ${totalW} ${svgHeight}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
+    svg += `<defs><style>@font-face{font-family:'Avenir Next LT Pro';src:local('Avenir Next LT Pro');} text{font-family:'Avenir Next LT Pro',sans-serif;}</style></defs>`;
 
-    if(selectedLayout==='strong'){
-        data.forEach((row,ri)=>{ if(ri>0 && ri%2===1){ svg+=`<rect x="0" y="${ri*rowH}" width="${totalW}" height="${rowH}" fill="#f0f0f0"/>`; } });
-    }else{
-        data.forEach((row,ri)=>{
-            const y=ri*rowH;
-            // --- MODIFICA QUI: La condizione `ri !== 1` diventa `ri > 1` per saltare anche la riga 0 ---
-            if(ri > 1) svg+=`<line x1="0" y1="${y}" x2="${totalW}" y2="${y}" stroke="#c9cbd1" stroke-width="1"/>`;
+    if (selectedLayout === 'strong') {
+        data.forEach((row, ri) => { if (ri > 0 && ri % 2 === 1) { svg += `<rect x="0" y="${ri * rowH}" width="${totalW}" height="${rowH}" fill="#f0f0f0"/>`; } });
+    } else {
+        data.forEach((row, ri) => {
+            const y = ri * rowH;
+            if (ri > 0) svg += `<line x1="0" y1="${y}" x2="${totalW}" y2="${y}" stroke="#c9cbd1" stroke-width="1"/>`;
         });
-        svg+=`<line x1="0" y1="${rowH}" x2="${totalW}" y2="${rowH}" stroke="#1d48b4" stroke-width="2"/>`;
-        svg+=`<line x1="0" y1="${totalH}" x2="${totalW}" y2="${totalH}" stroke="#c9cbd1" stroke-width="1"/>`;
+        svg += `<line x1="0" y1="${rowH}" x2="${totalW}" y2="${rowH}" stroke="#1d48b4" stroke-width="2"/>`;
+        svg += `<line x1="0" y1="${totalH}" x2="${totalW}" y2="${totalH}" stroke="#c9cbd1" stroke-width="1"/>`;
     }
 
-    let yPos=0;
-    data.forEach((row,ri)=>{
-        let xPos=0; const isHeader=ri===0;
-        row.forEach((cell,ci)=>{
-            const cW=colW[ci]; let txt=String(cell.value);
-            if(selectedLayout==='strong' && isHeader){ svg+=`<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="#1d48b4"/>`; }
-            let fillColor=isHeader?(selectedLayout==='strong'?'#fff':'#1d48b4'):'#4d4c4c';
-            let fontWeight=(isHeader?'bold':((boldFirstCol&&ci===0)||cell.style.bold?'bold':'normal'));
-            let fontStyle=cell.style.italic?'italic':'normal';
-            let textDec=cell.style.underline?'underline':'none';
-            if(isHeader){ txt=txt.toUpperCase(); }
+    let yPos = 0;
+    data.forEach((row, ri) => {
+        let xPos = 0;
+        const isHeader = ri === 0;
+        row.forEach((cell, ci) => {
+            const cW = colW[ci];
+            let txt = String(cell.value);
+            if (selectedLayout === 'strong' && isHeader) { svg += `<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="#1d48b4"/>`; }
+            let fillColor = isHeader ? (selectedLayout === 'strong' ? '#fff' : '#1d48b4') : '#4d4c4c';
+            let fontWeight = (isHeader ? 'bold' : ((boldFirstCol && ci === 0) || cell.style.bold ? 'bold' : 'normal'));
+            let fontStyle = cell.style.italic ? 'italic' : 'normal';
+            let textDec = cell.style.underline ? 'underline' : 'none';
+            if (isHeader) { txt = txt.toUpperCase(); }
 
             const defaultPadH = fontSize * 0.3;
             const firstColPadH = fontSize * 0.8;
             const currentPadH = (ci === 0) ? firstColPadH : defaultPadH;
             const avail = cW - (currentPadH * 2);
+            let finalLines = [];
 
-            const words=txt.split(' '); const lines=[]; let cur='';
-            words.forEach(w=>{ const test=cur?cur+' '+w:w; const wLen=measureText(test,fontSize,fontWeight==='bold',fontStyle==='italic'); if(wLen>avail && cur){ lines.push(cur); cur=w; } else { cur=test; } }); if(cur) lines.push(cur);
-            const maxL=Math.min(lines.length,maxLines);
-            if(lines.length>maxLines){ let last=lines[maxLines-1]; const ell='...'; while(measureText(last+ell,fontSize,fontWeight==='bold',fontStyle==='italic')>avail && last.length) last=last.slice(0,-1); lines[maxLines-1]=last+ell; }
-            const finalLines=lines.slice(0,maxL);
+            // ====== MODIFICA CHIAVE QUI: La logica ora usa il parametro `maxLines` ======
+            if (textHandlingMode === 'wrap') {
+                const words = txt.split(' ');
+                const lines = [];
+                let cur = '';
+                words.forEach(w => {
+                    const test = cur ? cur + ' ' + w : w;
+                    const wLen = measureText(test, fontSize, fontWeight === 'bold', fontStyle === 'italic');
+                    if (wLen > avail && cur) {
+                        lines.push(cur);
+                        cur = w;
+                    } else {
+                        cur = test;
+                    }
+                });
+                if (cur) lines.push(cur);
+                const maxL = Math.min(lines.length, maxLines);
+                if (lines.length > maxLines) {
+                    let last = lines[maxLines - 1];
+                    const ell = '...';
+                    while (measureText(last + ell, fontSize, fontWeight === 'bold', fontStyle === 'italic') > avail && last.length) last = last.slice(0, -1);
+                    lines[maxLines - 1] = last + ell;
+                }
+                finalLines = lines.slice(0, maxL);
+            } else { // 'truncate'
+                const fullWidth = measureText(txt, fontSize, fontWeight === 'bold', fontStyle === 'italic');
+                if (fullWidth <= avail) {
+                    finalLines.push(txt);
+                } else {
+                    let truncated = txt;
+                    const ell = '...';
+                    while (measureText(truncated + ell, fontSize, fontWeight === 'bold', fontStyle === 'italic') > avail && truncated.length > 0) {
+                        truncated = truncated.slice(0, -1);
+                    }
+                    finalLines.push(truncated + ell);
+                }
+            }
 
             const blockH = finalLines.length * lineHeight;
-            const startY = yPos + cellPadV + (rowH - cellPadV*2 - blockH)/2 + lineHeight*0.8;
+            const startY = yPos + cellPadV + (rowH - cellPadV * 2 - blockH) / 2 + lineHeight * 0.8;
             
-            finalLines.forEach((ln,li)=>{
-                const textY = startY + li*lineHeight;
+            finalLines.forEach((ln, li) => {
+                const textY = startY + li * lineHeight;
                 const anchor = ci === 0 ? 'start' : 'middle';
-                const textX = ci === 0 ? xPos + currentPadH : xPos + cW/2;
+                const textX = ci === 0 ? xPos + currentPadH : xPos + cW / 2;
                 
                 svg += `<text x="${textX}" y="${textY}" fill="${fillColor}" font-size="${fontSize}" 
                          font-weight="${fontWeight}" font-style="${fontStyle}" text-decoration="${textDec}" 
@@ -467,10 +567,10 @@ function createSVG(data,colW,totalW,fontSize,cellPadV){
                          alignment-baseline="central">${escapeXml(ln)}</text>`;
             });
 
-            if(selectedLayout==='strong') svg+=`<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="none" stroke="#1d48b4" stroke-width="1"/>`;
-            xPos+=cW;
+            if (selectedLayout === 'strong') svg += `<rect x="${xPos}" y="${yPos}" width="${cW}" height="${rowH}" fill="none" stroke="#1d48b4" stroke-width="1"/>`;
+            xPos += cW;
         });
-        yPos+=rowH;
+        yPos += rowH;
     });
 
     if (selectedLayout === 'strong') {
@@ -478,14 +578,13 @@ function createSVG(data,colW,totalW,fontSize,cellPadV){
         svg += `<rect x="0" y="0" width="${totalW}" height="${totalH}" fill="none" stroke="#1d48b4" stroke-width="${outerStrokeWidth}"/>`;
     }
 
-    svg+='</svg>'; return svg;
+    svg += '</svg>';
+    return svg;
 }
 
-function escapeXml(str){ return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;'); }
-
+function escapeXml(str){ return str.replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'''); }
 function downloadSVG(name){ const svgData=generatedSVGs.find(s=>s.name===name); if(!svgData) return; const blob=new Blob([svgData.svg],{type:'image/svg+xml'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${name}.svg`; a.click(); URL.revokeObjectURL(url); }
 window.downloadSVG=downloadSVG;
-
 document.getElementById('downloadAllBtn').addEventListener('click',function(){ this.innerHTML='<span>Download in corso...</span>'; generatedSVGs.forEach((s,i)=>setTimeout(()=>downloadSVG(s.name),i*200)); setTimeout(()=>{ this.innerHTML='<span>Scarica tutte le immagini</span>'; showStatus('Download completato!','success'); },generatedSVGs.length*200+500); });
 </script>
 </body>
