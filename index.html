@@ -358,11 +358,28 @@ document.addEventListener('DOMContentLoaded', function() {
             headers.push(cell ? XLSX.utils.format_cell(cell) : `Colonna ${c + 1}`);
         }
         sortColumnSelect.innerHTML = '<option value="-1">Nessun ordinamento</option>';
+        
+        let formatSection = document.getElementById('formatTogglesContainer');
+        if (!formatSection) {
+            formatSection = document.createElement('div');
+            formatSection.id = 'formatTogglesContainer';
+            formatSection.className = 'control-block';
+            formatSection.style.marginTop = '20px';
+            const sortSect = document.getElementById('sortSection');
+            if (sortSect) sortSect.appendChild(formatSection);
+        }
+        formatSection.innerHTML = '<div style="width:100%;margin-bottom:10px;"><label style="color:#1d48b4;font-weight:600;">Disattiva abbreviazioni (K/M) per le colonne:</label></div>';
+
         headers.forEach((header, index) => {
             const option = document.createElement('option');
             option.value = index;
             option.textContent = header;
             sortColumnSelect.appendChild(option);
+
+            const toggleDiv = document.createElement('div');
+            toggleDiv.className = 'control-group-item';
+            toggleDiv.innerHTML = `<input type="checkbox" id="noFormat_${index}" value="${index}"> <label for="noFormat_${index}">${header}</label>`;
+            formatSection.appendChild(toggleDiv);
         });
     }
 
@@ -382,6 +399,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const cellPaddingV = ptToPx(cellSpacingPt);
         const sortColumnIndex = parseInt(sortColumnSelect.value);
         const sortDirection = document.querySelector('input[name="sortDirection"]:checked').value;
+        const disabledFormatCols = Array.from(document.querySelectorAll('input[id^="noFormat_"]:checked')).map(cb => parseInt(cb.value));
+
         workbookData.SheetNames.forEach(sheetName=>{
             const ws = workbookData.Sheets[sheetName];
             const range = XLSX.utils.decode_range(ws['!ref']);
@@ -394,7 +413,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     let v = cell.v !== undefined ? cell.v : '';
                     const rawValue = v;
                     if (v instanceof Date) { v = formatDate(v); } 
-                    else if (typeof v === 'number' && !XLSX.SSF.is_date(cell.z)) { v = formatNumber(v); }
+                    else if (typeof v === 'number' && !XLSX.SSF.is_date(cell.z)) { 
+                        const cIndex = c - range.s.c;
+                        if (disabledFormatCols.includes(cIndex)) {
+                            v = v % 1 !== 0 ? v.toFixed(2).replace('.',',') : v.toString();
+                        } else {
+                            v = formatNumber(v); 
+                        }
+                    }
                     const st = cell.s||{};
                     const style={ bold:st.font?.bold, italic:st.font?.italic, underline:st.font?.underline };
                     const align={ h:st.alignment?.horizontal||'left', v:st.alignment?.vertical||'middle' };
