@@ -6,7 +6,6 @@
     <title>Excel to SVG Converter</title>
 <link rel="icon" href="favicon.ico">
     <style>
-        /* CSS Invariato */
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: 'Avenir Next LT Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -103,9 +102,9 @@
                 <div class="upload-icon">
                     <svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
                 </div>
-                <p style="font-size:1.2em;color:#1d48b4;font-weight:600;">Clicca o trascina qui il tuo file Excel</p>
-                <p style="color:#666;margin-top:10px;">Formati supportati: .xlsx, .xls</p>
-                <input type="file" id="fileInput" accept=".xlsx,.xls">
+                <p style="font-size:1.2em;color:#1d48b4;font-weight:600;">Clicca o trascina qui il tuo file Excel o CSV</p>
+                <p style="color:#666;margin-top:10px;">Formati supportati: .xlsx, .xls, .csv</p>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
             </div>
             <div class="status-message" id="statusMessage"></div>
         </div>
@@ -346,7 +345,6 @@ document.addEventListener('DOMContentLoaded', function() {
         reader.readAsArrayBuffer(file);
     }
 
-    // --- Il resto delle funzioni (invariato) ---
     function populateSortOptions() {
         if (!workbookData || !sortColumnSelect) return;
         const firstSheetName = workbookData.SheetNames[0];
@@ -365,10 +363,14 @@ document.addEventListener('DOMContentLoaded', function() {
             formatSection.id = 'formatTogglesContainer';
             formatSection.className = 'control-block';
             formatSection.style.marginTop = '20px';
+            formatSection.style.flexDirection = 'column';
+            formatSection.style.alignItems = 'flex-start';
             const sortSect = document.getElementById('sortSection');
             if (sortSect) sortSect.appendChild(formatSection);
         }
-        formatSection.innerHTML = '<div style="width:100%;margin-bottom:10px;"><label style="color:#1d48b4;font-weight:600;">Disattiva abbreviazioni (K/M) per le colonne:</label></div>';
+        
+        let htmlStr = '<div style="width:100%;margin-bottom:10px;"><label style="color:#1d48b4;font-weight:600;">Impostazioni formato per singola colonna:</label></div>';
+        htmlStr += '<div style="display:flex; flex-direction:column; gap:10px; width:100%;">';
 
         headers.forEach((header, index) => {
             const option = document.createElement('option');
@@ -376,11 +378,15 @@ document.addEventListener('DOMContentLoaded', function() {
             option.textContent = header;
             sortColumnSelect.appendChild(option);
 
-            const toggleDiv = document.createElement('div');
-            toggleDiv.className = 'control-group-item';
-            toggleDiv.innerHTML = `<input type="checkbox" id="noFormat_${index}" value="${index}"> <label for="noFormat_${index}">${header}</label>`;
-            formatSection.appendChild(toggleDiv);
+            htmlStr += '<div style="display:flex; align-items:center; gap:15px; background:#fff; padding:10px; border-radius:4px; border:1px solid #e0e0e0; flex-wrap:wrap;">';
+            htmlStr += '<strong style="min-width:120px; color:#1d48b4;">' + header + ':</strong>';
+            htmlStr += '<div class="control-group-item"><input type="checkbox" id="noFormat_' + index + '" value="' + index + '"> <label for="noFormat_' + index + '">Disattiva (K/M)</label></div>';
+            htmlStr += '<div class="control-group-item"><input type="checkbox" id="forceDecimals_' + index + '" value="' + index + '"> <label for="forceDecimals_' + index + '">Forza 2 decimali (,00)</label></div>';
+            htmlStr += '<div class="control-group-item"><input type="checkbox" id="useThousandsSeparator_' + index + '" value="' + index + '"> <label for="useThousandsSeparator_' + index + '">Separatore migliaia (.)</label></div>';
+            htmlStr += '</div>';
         });
+        htmlStr += '</div>';
+        formatSection.innerHTML = htmlStr;
     }
 
     function showStatus(msg,type){
@@ -399,7 +405,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const cellPaddingV = ptToPx(cellSpacingPt);
         const sortColumnIndex = parseInt(sortColumnSelect.value);
         const sortDirection = document.querySelector('input[name="sortDirection"]:checked').value;
+        
         const disabledFormatCols = Array.from(document.querySelectorAll('input[id^="noFormat_"]:checked')).map(cb => parseInt(cb.value));
+        const forceDecimalsCols = Array.from(document.querySelectorAll('input[id^="forceDecimals_"]:checked')).map(cb => parseInt(cb.value));
+        const useThousandsSeparatorCols = Array.from(document.querySelectorAll('input[id^="useThousandsSeparator_"]:checked')).map(cb => parseInt(cb.value));
 
         workbookData.SheetNames.forEach(sheetName=>{
             const ws = workbookData.Sheets[sheetName];
@@ -415,10 +424,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (v instanceof Date) { v = formatDate(v); } 
                     else if (typeof v === 'number' && !XLSX.SSF.is_date(cell.z)) { 
                         const cIndex = c - range.s.c;
-                        if (disabledFormatCols.includes(cIndex)) {
-                            v = v % 1 !== 0 ? v.toFixed(2).replace('.',',') : v.toString();
+                        const disableAbbr = disabledFormatCols.includes(cIndex);
+                        const forceDec = forceDecimalsCols.includes(cIndex);
+                        const useSep = useThousandsSeparatorCols.includes(cIndex);
+
+                        if (disableAbbr) {
+                            if (forceDec) {
+                                v = v.toFixed(2).replace('.', ',');
+                            } else {
+                                v = v % 1 !== 0 ? v.toFixed(2).replace('.', ',') : v.toString();
+                            }
+                            if (useSep) {
+                                let parts = String(v).split(',');
+                                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                                v = parts.join(',');
+                            }
                         } else {
-                            v = formatNumber(v); 
+                            v = formatNumber(v);
+                            let isAbbreviated = typeof v === 'string' && (v.includes('K') || v.includes('M'));
+                            if (forceDec && !isAbbreviated && !String(v).includes(',')) {
+                                v += ',00';
+                            }
+                            if (useSep && !isAbbreviated) {
+                                let parts = String(v).split(',');
+                                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                                v = parts.join(',');
+                            }
                         }
                     }
                     const st = cell.s||{};
@@ -523,7 +554,6 @@ document.addEventListener('DOMContentLoaded', function() {
         URL.revokeObjectURL(url);
     }
     
-    // --- Funzioni di calcolo e utilità (invariate) ---
     const FONT_FAMILY = "'Avenir Next LT Pro', sans-serif";
     function ptToPx(pt){ return pt*1.333; }
     function formatNumber(val){ if(typeof val!=='number') return val; const abs=Math.abs(val); let f; if(abs>=1e6) f=(val/1e6).toFixed(2).replace('.',',')+'M'; else if(abs>=1e3) f=(val/1e3).toFixed(2).replace('.',',')+'K'; else f=val.toString(); f=f.replace(/,00([MK])/,'$1').replace(/,0([MK])/,'$1'); return f; }
