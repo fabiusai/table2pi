@@ -376,6 +376,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span id="formatAccordionIcon" style="font-size:0.9em;">▼</span>
             </button>
             <div id="formatAccordionContent" style="display:none; padding:20px; background:#fff; border-top:1px solid #e0e0e0;">
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; background: #f0f4ff; padding: 15px; border-radius: 6px; border: 1px solid #d0deff;">
+                    <div style="flex-basis: 100%; margin-bottom: 5px; font-weight: 600; color: #1d48b4; font-size: 0.95em;">Strumenti di Backup Impostazioni</div>
+                    <button id="exportSettingsBtn" class="btn secondary" style="padding: 10px 15px; font-size: 0.9em; box-shadow:none;">⬇️ Esporta JSON</button>
+                    <button id="importSettingsBtn" class="btn secondary" style="padding: 10px 15px; font-size: 0.9em; box-shadow:none;">⬆️ Importa JSON</button>
+                    <input type="file" id="importSettingsInput" accept=".json" style="display:none;">
+                </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:15px;">
         `;
 
@@ -412,6 +418,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 icon.textContent = '▼';
                 this.style.background = '#f8f9ff';
             }
+        });
+
+        document.getElementById('exportSettingsBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const settings = {
+                noFormat: Array.from(document.querySelectorAll('input[id^="noFormat_"]:checked')).map(cb => parseInt(cb.value)),
+                forceDecimals: Array.from(document.querySelectorAll('input[id^="forceDecimals_"]:checked')).map(cb => parseInt(cb.value)),
+                useThousandsSeparator: Array.from(document.querySelectorAll('input[id^="useThousandsSeparator_"]:checked')).map(cb => parseInt(cb.value)),
+                isEuro: Array.from(document.querySelectorAll('input[id^="isEuro_"]:checked')).map(cb => parseInt(cb.value))
+            };
+            const blob = new Blob([JSON.stringify(settings, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'impostazioni_colonne.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showStatus('Impostazioni esportate in JSON', 'success');
+        });
+
+        const importBtn = document.getElementById('importSettingsBtn');
+        const importInput = document.getElementById('importSettingsInput');
+        importBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            importInput.click();
+        });
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const settings = JSON.parse(event.target.result);
+                    document.querySelectorAll('input[type="checkbox"][id^="noFormat_"], input[type="checkbox"][id^="forceDecimals_"], input[type="checkbox"][id^="useThousandsSeparator_"], input[type="checkbox"][id^="isEuro_"]').forEach(cb => cb.checked = false);
+                    if(settings.noFormat) settings.noFormat.forEach(i => { const cb = document.getElementById(`noFormat_${i}`); if(cb) cb.checked = true; });
+                    if(settings.forceDecimals) settings.forceDecimals.forEach(i => { const cb = document.getElementById(`forceDecimals_${i}`); if(cb) cb.checked = true; });
+                    if(settings.useThousandsSeparator) settings.useThousandsSeparator.forEach(i => { const cb = document.getElementById(`useThousandsSeparator_${i}`); if(cb) cb.checked = true; });
+                    if(settings.isEuro) settings.isEuro.forEach(i => { const cb = document.getElementById(`isEuro_${i}`); if(cb) cb.checked = true; });
+                    showStatus('Impostazioni importate con successo!', 'success');
+                } catch (err) {
+                    showStatus('Errore nel file JSON delle impostazioni.', 'error');
+                }
+                importInput.value = '';
+            };
+            reader.readAsText(file);
         });
     }
 
